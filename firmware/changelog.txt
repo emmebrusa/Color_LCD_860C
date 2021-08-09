@@ -1,3 +1,33 @@
+Update for 860C-850C displays, v20.1C.3.
+Compatible with TSDZ2-v20.1C.3-860C-NEW.hex firmware motor and also with the previous version TSDZ2-v20.1C.3-860C.hex.
+
+Fixed Wh / km - Wh / mi conversion, now it works.
+
+I added new data to trip A and trip B:
+A used Wh
+B used Wh
+A Wh / km (Wh / mi)
+B Wh / km (Wh / mi)
+Furthermore, by setting the "automatic reset hours" to zero, with a fully charged battery (SOC 100%), an automatic trip reset is obtained.
+
+Also added the possibility to set the temperature unit of measure independently from SI / Imperial (also SW102).
+
+"Motor fast stop" has been removed as a menu item, but the function is still present, to activate it set Motor deceleration = 100 (also SW102).
+
+Increased maximum battery capacity limit (also SW102).
+Fixed other small bugs that I don't list.
+
+The only modification on the motor is the "Startup assist" function, interesting for off-roaders, enabled in the "Startup boost" menu (with SW102 it is always enabled).
+It is used to start from a standstill on impossible climbs, you have to press the UP button for two seconds and, keeping it pressed, start pedaling. After starting, release the button.
+Warning: the power delivered when the UP button is held down depends on the level of assistance and the thrust on the pedals.
+
+Only with SW102, enabled by default "Config shortcut key" (long M key), quick access to the configuration menu.
+The SW102 version has not been tested.
+
+The manual is still to be updated.
+
+***************************************************************************************************************************************
+
 Color LCD 860C display for TSDZ2 Open Source Firmware v20.1C
 
 Assistance mode available

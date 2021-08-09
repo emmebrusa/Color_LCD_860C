@@ -141,6 +141,8 @@ typedef enum {
   ConvertFromImperial_temperature,
   ConvertToImperial_mass,
   ConvertFromImperial_mass,
+  ConvertToImperial_consumption,
+  ConvertFromImperial_consumption,
 } ConvertUnitsType;
 
 // max points for hold up to 3 differents records of each variables, possible 15 minutes, 1 hour and 4 hours
@@ -523,7 +525,11 @@ extern bool screenConvertMiles;
 // Set to true if we should automatically convert C -> F
 extern bool screenConvertFarenheit;
 
+// Set to true if we should automatically convert kg -> Pounds
 extern bool screenConvertPounds;
+
+// Set to true if we should automatically convert Wh/km -> Wh/mi
+extern bool screenConvertWhPerMiles;
 
 extern variables_t g_vars[VARS_SIZE];  // this is needed to be used on configurations otherwise I could not make code build
 #ifndef SW102

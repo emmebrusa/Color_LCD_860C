@@ -4,6 +4,16 @@
 
 extern volatile uint8_t ui8_battery_soc_used[100];
 
+#ifndef SW102
+// for calculate Wh trip A and B
+extern uint32_t ui32_wh_x10_reset_trip_a;
+extern uint32_t ui32_wh_x10_reset_trip_b;
+extern uint32_t ui32_wh_x10_since_power_on;
+extern uint32_t ui32_trip_a_wh_km_value_x100;
+extern uint32_t ui32_trip_b_wh_km_value_x100;
+#endif
+
+// common
 extern Screen mainScreen1, mainScreen2, bootScreen;
 extern Screen *screens[];
 extern Field
@@ -27,6 +37,12 @@ extern Field
   humanPowerField,
   batteryPowerField,
   batteryPowerUsageField,
+#ifndef SW102
+  tripAUsedWhField,
+  tripBUsedWhField,
+  tripAWhKmField,
+  tripBWhKmField,
+#endif
   fieldAlternate,
   batteryVoltageField,
   batteryCurrentField,

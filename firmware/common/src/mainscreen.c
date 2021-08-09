@@ -39,8 +39,16 @@ volatile uint8_t ui8_battery_soc_used[100] = { 1, 1, 2, 3, 4, 5, 6, 8, 10, 12, 1
 	69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 85, 86, 87, 87, 88, 88, 89, 89, 90, 90,
 	91,	91, 91, 92, 92, 92, 93, 93, 93, 94, 94, 94, 95, 95, 95, 96, 96, 96, 97, 97, 97, 98, 98, 98, 99, 99, 99 };
 // table tested with Panasonic NCR18650GA, voltage reset Wh = 4.15 x num.cells, voltage cut-off = 2.90 x num.cells
-	
-	
+
+#ifndef SW102
+// for calculate Wh trip A and B
+uint32_t ui32_wh_x10_reset_trip_a = 0;
+uint32_t ui32_wh_x10_reset_trip_b = 0;
+uint32_t ui32_wh_x10_since_power_on = 0;
+uint32_t ui32_trip_a_wh_km_value_x100 = 0;
+uint32_t ui32_trip_b_wh_km_value_x100 = 0;
+#endif
+
 // only used on SW102, to count timeout to override the wheel speed value with assist level value
 static uint16_t m_assist_level_change_timeout = 0;
 
@@ -49,6 +57,9 @@ uint8_t ui8_m_wheel_speed_integer;
 uint8_t ui8_m_wheel_speed_decimal;
 
 static uint8_t ui8_walk_assist_timeout = 0;
+static uint8_t ui8_startup_assist_timeout = 0;
+static uint8_t ui8_startup_assist_maxtime = 0;
+static uint8_t ui8_startup_assist_lights_restore = 0;
 
 uint16_t ui16_m_battery_current_filtered_x10;
 uint16_t ui16_m_motor_current_filtered_x10;
@@ -65,6 +76,7 @@ uint8_t ui8_m_vthrottle_can_increment_decrement = 0;
 void lcd_main_screen(void);
 void warnings(void);
 void walk_assist_state(void);
+void startup_assist_state(void);
 void power(void);
 void time(void);
 void wheel_speed(void);
@@ -95,6 +107,8 @@ bool wd_failure_detected;
 #define MAX_TIMESTR_LEN 8 // including nul terminator
 #define MAX_BATTERY_POWER_USAGE_STR_LEN 6 // Wh/km or Wh/mi , including nul terminator
 #define MAX_ALTERNATE_USAGE_STR_LEN 10 // "max power", "throttle"  including nul terminator
+#define MAX_TRIP_A_POWER_USAGE_STR_LEN 8 // "A Wh/km" or "A Wh/mi" , including nul terminator
+#define MAX_TRIP_B_POWER_USAGE_STR_LEN 8 // "B Wh/km or "B Wh/mi" , including nul terminator
 
 //
 // Fields - these might be shared my multiple screens
@@ -134,9 +148,13 @@ Field motorTempField = FIELD_READONLY_UINT(_S("motor temp", "mot temp"), &ui_var
 Field motorErpsField = FIELD_READONLY_UINT(_S("motor speed", "mot speed"), &ui_vars.ui16_motor_speed_erps, "", true, .div_digits = 0);
 Field pwmDutyField = FIELD_READONLY_UINT(_S("motor pwm", "mot pwm"), &ui_vars.ui8_duty_cycle, "", true, .div_digits = 0);
 Field motorFOCField = FIELD_READONLY_UINT(_S("motor foc", "mot foc"), &ui_vars.ui8_foc_angle, "", true, .div_digits = 0);
-Field batteryPowerUsageField = FIELD_READONLY_UINT((char [MAX_BATTERY_POWER_USAGE_STR_LEN]){ 0 }, &ui_vars.battery_energy_km_value_x100, "kph", true, .div_digits = 2);
-
-
+Field batteryPowerUsageField = FIELD_READONLY_UINT((char [MAX_BATTERY_POWER_USAGE_STR_LEN]){ 0 }, &ui_vars.battery_energy_km_value_x100, "Wh/km", true, .div_digits = 2);
+#ifndef SW102
+Field tripAUsedWhField = FIELD_READONLY_UINT(_S("A used Wh", "A Wh"), &ui_vars.ui32_wh_x10_trip_a, "", true, .div_digits = 1);
+Field tripBUsedWhField = FIELD_READONLY_UINT(_S("B used Wh", "B Wh"), &ui_vars.ui32_wh_x10_trip_b, "", true, .div_digits = 1);
+Field tripAWhKmField = FIELD_READONLY_UINT((char [MAX_TRIP_A_POWER_USAGE_STR_LEN]){ 0 }, &ui32_trip_a_wh_km_value_x100, "Wh/km", true, .div_digits = 2);
+Field tripBWhKmField = FIELD_READONLY_UINT((char [MAX_TRIP_B_POWER_USAGE_STR_LEN]){ 0 }, &ui32_trip_b_wh_km_value_x100, "Wh/km", true, .div_digits = 2);
+#endif
 Field warnField = FIELD_CUSTOM(renderWarning);
 
 /**
@@ -167,6 +185,12 @@ Field *customizables[] = {
 	&pwmDutyField, // 20
 	&motorFOCField, // 21
 	&batteryPowerUsageField, // 22
+#ifndef SW102
+	&tripAUsedWhField, // 23
+	&tripBUsedWhField, // 24
+	&tripAWhKmField, // 25
+	&tripBWhKmField, // 26
+#endif
 	NULL
 };
 
@@ -190,7 +214,7 @@ Field pwmDutyFieldGraph = FIELD_READONLY_UINT("pwm duty-cycle", &rt_vars.ui8_dut
 Field motorFOCFieldGraph = FIELD_READONLY_UINT("motor foc", &rt_vars.ui8_foc_angle, "", false);
 
 // Note: this field label is special, the string it is pointing to must be in RAM so we can change it later
-Field batteryPowerUsageFieldGraph = FIELD_READONLY_UINT((char [MAX_BATTERY_POWER_USAGE_STR_LEN]){ 0 }, &rt_vars.battery_energy_h_km.ui32_value_x10, "kph", false, .div_digits = 1);
+Field batteryPowerUsageFieldGraph = FIELD_READONLY_UINT((char [MAX_BATTERY_POWER_USAGE_STR_LEN]){ 0 }, &rt_vars.battery_energy_h_km.ui32_value_x10, "Wh/km", false, .div_digits = 1);
 
 #ifndef SW102 // we don't have any graphs yet on SW102, possibly move this into mainscreen_850.c
 Field wheelSpeedGraph = FIELD_GRAPH(&wheelSpeedFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsWheelSpeed]);
@@ -413,7 +437,10 @@ bool anyscreen_onpress(buttons_events_t events) {
   if (events & UP_LONG_CLICK) {
     ui_vars.ui8_lights = !ui_vars.ui8_lights;
     set_lcd_backlight();
-
+	
+	if ((ui_vars.ui8_startup_assist_feature_enabled)&&(ui8_startup_assist_maxtime))
+		ui_vars.ui8_startup_assist = 1;
+	
     return true;
   }
 
@@ -640,16 +667,27 @@ bool mainScreenOnPress(buttons_events_t events) {
 	return handled;
 }
 
-
 void set_conversions() {
   screenConvertMiles = ui_vars.ui8_units_type != 0; // Set initial value on unit conversions (FIXME, move this someplace better)
-  screenConvertFarenheit = screenConvertMiles; // FIXME, should be based on a different eeprom config value
   screenConvertPounds = screenConvertMiles;
+  screenConvertWhPerMiles = screenConvertMiles;
+  switch (ui_vars.ui8_screen_temperature) {
+    case AUTO:
+		screenConvertFarenheit = screenConvertMiles; // FIXME, should be based on a different eeprom config value
+		break;
+	case CELSIUS:
+		screenConvertFarenheit = false;
+		break;
+	case FARENHEIT:
+		screenConvertFarenheit = true;
+		break;
+  }
 }
 
 void lcd_main_screen(void) {
 	time();
 	walk_assist_state();
+	startup_assist_state();
 	battery_soc();
 	battery_display();
 	warnings();
@@ -1154,6 +1192,11 @@ void warnings(void) {
 		return;
 	}
 
+	if((ui_vars.ui8_startup_assist)&&(ui_vars.ui8_assist_level)) {
+		setWarning(ColorNormal, "STARTUP");
+		return;
+	}
+	
 	if((ui_vars.ui8_walk_assist)&&(ui_vars.ui8_assist_level)) {
 		if(ui_vars.ui16_wheel_speed_x10 <= WALK_ASSIST_THRESHOLD_SPEED_X10)
 			setWarning(ColorNormal, "WALK");
@@ -1241,6 +1284,35 @@ void walk_assist_state(void) {
     }
   } else {
     ui_vars.ui8_walk_assist = 0;
+  }
+}
+
+void startup_assist_state(void) {
+  if (ui_vars.ui8_startup_assist_feature_enabled) {
+	if (buttons_get_up_state() == 0) {
+		ui8_startup_assist_maxtime = 100; // 10.0 seconds
+		ui8_startup_assist_lights_restore = 0;
+	}
+	
+    // if up button is still pressed
+    if (ui_vars.ui8_startup_assist && buttons_get_up_state()) {
+      ui8_startup_assist_timeout = 2; // 0.2 seconds
+	  
+	  if (--ui8_startup_assist_maxtime == 0)
+		  ui_vars.ui8_startup_assist = 0;
+	  
+	  if((ui8_startup_assist_maxtime <= 80) // 2 seconds (100 - 80)
+		&&(!ui8_startup_assist_lights_restore)) {
+			ui8_startup_assist_lights_restore = 1;
+			ui_vars.ui8_lights = !ui_vars.ui8_lights;
+			set_lcd_backlight();
+	  }
+	
+    } else if (buttons_get_up_state() == 0 && --ui8_startup_assist_timeout == 0) {
+      ui_vars.ui8_startup_assist = 0;
+    }
+  } else {
+    ui_vars.ui8_startup_assist = 0;
   }
 }
 
@@ -1382,6 +1454,9 @@ void TripMemoriesReset(void) {
     uint32_t current_time = RTC_GetCounter();
 
     rt_vars.ui32_trip_a_last_update_time = current_time;
+	
+	ui_vars.ui32_wh_x10_trip_a_offset = 0;
+	ui32_wh_x10_reset_trip_a = ui32_wh_x10_since_power_on;
 #endif
 
     rt_vars.ui32_trip_a_distance_x1000 = 0;
@@ -1397,6 +1472,9 @@ void TripMemoriesReset(void) {
     uint32_t current_time = RTC_GetCounter();
 
     rt_vars.ui32_trip_b_last_update_time = current_time;
+	
+	ui_vars.ui32_wh_x10_trip_b_offset = 0;
+	ui32_wh_x10_reset_trip_b = ui32_wh_x10_since_power_on;
 #endif
 
     rt_vars.ui32_trip_b_distance_x1000 = 0;
@@ -1419,6 +1497,13 @@ void BatterySOCReset(void) {
 			
 			ui_vars.ui32_wh_x10_offset = (ui_vars.ui32_wh_x10_100_percent
 				* ui8_battery_soc_used[ui8_battery_soc_index]) / 100;
+#ifndef SW102
+			ui_vars.ui32_wh_x10_trip_a_offset = ui_vars.ui32_wh_x10_trip_a;
+			ui32_wh_x10_reset_trip_a = 0;
+			
+			ui_vars.ui32_wh_x10_trip_b_offset = ui_vars.ui32_wh_x10_trip_b;
+			ui32_wh_x10_reset_trip_b = 0;
+#endif
 		}
 	}
 }

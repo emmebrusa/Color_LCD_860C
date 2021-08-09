@@ -592,6 +592,9 @@ bool screenConvertFarenheit = false;
 // Set to true if we should automatically convert kg -> lb
 bool screenConvertPounds = false;
 
+// Set to true if we should automatically convert Wh/km -> Wh/mi
+bool screenConvertWhPerMiles = false;
+
 // Get the numeric value of an editable number, properly handling different possible byte encodings
 // if withConversion, convert from SI units if necessary
 static int32_t getEditableNumber(Field *field, bool withConversion) {
@@ -625,6 +628,9 @@ static int32_t getEditableNumber(Field *field, bool withConversion) {
 
     if (screenConvertPounds && strcmp(units, "kg") == 0)
       num = (num * 220) / 100;
+  
+	if (screenConvertWhPerMiles && strcasecmp(units, "Wh/km") == 0)
+      num = (num * 161) / 100; // mul by 1.609 for Wh/km->Wh/mi
   }
 
   return num;
@@ -657,6 +663,14 @@ int32_t convertUnits(int32_t val, ConvertUnitsType type) {
     case ConvertFromImperial_mass:
       val = (val * 100) / 220;
       break;
+	  
+	case ConvertToImperial_consumption:
+      val = (val * 161) / 100; // mul by 1.609 for Kw/km->/Kw/mi
+      break;
+
+    case ConvertFromImperial_consumption:
+      val = (val * 100) / 161; // div by 1.609 for Kw/km->Kw/mi
+      break;
   }
 
   return val;
@@ -676,6 +690,8 @@ int32_t convertToImperialIfNeeded(Field *field, int32_t num) {
   if (screenConvertPounds && strcmp(units, "kg") == 0)
     num = convertUnits(num, ConvertToImperial_mass);
 
+  if (screenConvertWhPerMiles && strcmp(units, "Wh/km") == 0)
+    num = convertUnits(num, ConvertToImperial_consumption);
   return num;
 }
 
@@ -693,6 +709,9 @@ int32_t convertFromImperialIfNeeded(Field *field, int32_t num) {
   if (screenConvertPounds && strcmp(units, "kg") == 0)
     num = convertUnits(num, ConvertFromImperial_mass);
 
+  if (screenConvertWhPerMiles && strcmp(units, "Kw/km") == 0)
+    num = convertUnits(num, ConvertFromImperial_consumption);
+
   return num;
 }
 
@@ -703,13 +722,16 @@ static void setEditableNumber(Field *field, uint32_t v, bool withConversion) {
 		if (screenConvertMiles
 				&& (strcasecmp(units, "kph") == 0
 						|| strcasecmp(units, "km") == 0))
-      v = convertUnits(v, ConvertFromImperial_speed);
+			v = convertUnits(v, ConvertFromImperial_speed);
 
 		if (screenConvertFarenheit && strcmp(units, "C") == 0)
-		  v = convertUnits(v, ConvertFromImperial_temperature);
+			v = convertUnits(v, ConvertFromImperial_temperature);
 
-    if (screenConvertPounds && strcmp(units, "kg") == 0)
-      v = convertUnits(v, ConvertFromImperial_mass);
+		if (screenConvertPounds && strcmp(units, "kg") == 0)
+			v = convertUnits(v, ConvertFromImperial_mass);
+		
+		if (screenConvertWhPerMiles && strcmp(units, "Wh/km") == 0)
+			v = convertUnits(v, ConvertFromImperial_consumption);
 	}
 
 	switch (field->editable.size) {
@@ -808,6 +830,11 @@ static const char* getUnits(Field *field) {
       return "lb";
   }
 
+  if (screenConvertWhPerMiles) {
+    if (strcmp(units, "Wh/km") == 0)
+      return "Wh/mi";
+  }
+  
 	return units;
 }
 
@@ -2419,16 +2446,24 @@ void graph_init(void) {
 void update_battery_power_usage_label(void) {
   static const char str_km[] = "Wh/km";
   static const char str_mi[] = "Wh/mi";
-
+  static const char str_a_km[] = "A Wh/km";
+  static const char str_a_mi[] = "A Wh/mi";
+  static const char str_b_km[] = "B Wh/km";
+  static const char str_b_mi[] = "B Wh/mi";
+  
   if(ui_vars.ui8_units_type == 0) {
     updateReadOnlyLabelStr(&batteryPowerUsageField, str_km);
 #ifndef SW102
-    updateReadOnlyLabelStr(&batteryPowerUsageFieldGraph, str_km);
+    updateReadOnlyLabelStr(&tripAWhKmField, str_a_km);
+	updateReadOnlyLabelStr(&tripBWhKmField, str_b_km);
+	updateReadOnlyLabelStr(&batteryPowerUsageFieldGraph, str_km);
 #endif
   }
   else {
     updateReadOnlyLabelStr(&batteryPowerUsageField, str_mi);
 #ifndef SW102
+	updateReadOnlyLabelStr(&tripAWhKmField, str_a_mi);
+	updateReadOnlyLabelStr(&tripBWhKmField, str_b_mi);
     updateReadOnlyLabelStr(&batteryPowerUsageFieldGraph, str_mi);
 #endif
   }

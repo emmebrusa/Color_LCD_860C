@@ -190,6 +190,12 @@ typedef struct eeprom_data {
   uint16_t ui16_trip_b_max_speed_x10;
   
   uint8_t ui8_motor_deceleration_adjustment;
+  uint8_t ui8_screen_temperature;
+  
+#ifndef SW102  
+  uint32_t ui32_wh_x10_trip_a_offset;
+  uint32_t ui32_wh_x10_trip_b_offset;
+#endif
   
 // FIXME align to 32 bit value by end of structure and pack other fields
 } eeprom_data_t;
@@ -207,6 +213,10 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_WHEEL_PERIMETER                               2100 // 27.5'' wheel: 2100mm perimeter
 #define DEFAULT_VALUE_WHEEL_MAX_SPEED                               50 // 50 km/h
 #define DEFAULT_VALUE_UNITS_TYPE                                    0 // // 0=km/h, 1=miles
+#ifndef SW102
+#define DEFAULT_VALUE_WH_X10_TRIP_A_OFFSET							0
+#define DEFAULT_VALUE_WH_X10_TRIP_B_OFFSET							0
+#endif
 #define DEFAULT_VALUE_WH_X10_OFFSET                                 0
 #define DEFAULT_VALUE_HW_X10_100_PERCENT                            4000 // default to a battery of 400 Wh
 #define DEAFULT_VALUE_SHOW_NUMERIC_BATTERY_SOC                      1 // // 0=none 1=SOC 2=volts
@@ -283,9 +293,12 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_STARTUP_BOOST_TORQUE_FACTOR					250
 #define DEFAULT_VALUE_STARTUP_BOOST_CADENCE_STEP					25
 
+#define DEFAULT_VALUE_STARTUP_ASSIST_FEATURE_ENABLED     			0
+
 #define DEFAULT_VALUE_OPTIONAL_ADC_FUNCTION              			0 // 0=not used 1=temperature control 2=throttle control
 #define DEFAULT_VALUE_MOTOR_TEMPERATURE_MIN_VALUE_LIMIT             65 // 65 degrees celsius
 #define DEFAULT_VALUE_MOTOR_TEMPERATURE_MAX_VALUE_LIMIT             85 // 85 degrees celsius
+#define DEFAULT_VALUE_SCREEN_TEMPERATURE							0 // 0=AUTO 1=CELSIUS 2=FARENHEIT		
 
 #define DEFAULT_VALUE_BATTERY_VOLTAGE_RESET_WH_COUNTER_X10          584 // 52v battery, 58.4 volts at fully charged
 #define DEFAULT_VALUE_LCD_POWER_OFF_TIME                            30 // 30 minutes, each unit 1 minute
@@ -312,7 +325,7 @@ void eeprom_init_defaults(void);
 #define DEFAULT_STREET_MODE_HOTKEY_ENABLE                           0 // disabled
 #define DEFAULT_PEDAL_CADENCE_FAST_STOP_ENABLE                      0 // disabled
 #define DEFAULT_COAST_BRAKE_ADC                                     30 // 15: tested by plpetrov user on 28.04.2020:
-#define DEFAULT_FIELD_WEAKENING                                     1 // 1 enabled
+#define DEFAULT_VALUE_FIELD_WEAKENING_FEATURE_ENABLED               1 // 1 enabled
 //#define DEFAULT_ADC_LIGHTS_CURRENT_OFFSET                           1
 #define DEFAULT_THROTTLE_VIRTUAL_STEP                               5
 //#define DEFAULT_TORQUE_SENSOR_FILTER                                20 // 20%
@@ -365,7 +378,8 @@ void eeprom_init_defaults(void);
 
 #define DEFAULT_BIT_DATA_3	(DEFAULT_STREET_MODE_CRUISE_ENABLE | \
 (DEFAULT_VALUE_CONFIG_SHORTCUT_KEY_ENABLED << 1) | \
-(DEFAULT_FIELD_WEAKENING << 2))
+(DEFAULT_VALUE_FIELD_WEAKENING_FEATURE_ENABLED << 2) | \
+(DEFAULT_VALUE_STARTUP_ASSIST_FEATURE_ENABLED << 3))
 // bit free for future use
 
 

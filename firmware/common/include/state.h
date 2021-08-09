@@ -8,6 +8,11 @@
 #define TEMPERATURE_CONTROL					1
 #define THROTTLE_CONTROL					2
 
+// screen temperature
+#define AUTO								0
+#define CELSIUS								1
+#define FARENHEIT							2
+
 #define ASSIST_LEVEL_NUMBER					9
 
 typedef enum {
@@ -81,6 +86,13 @@ typedef struct rt_vars_struct {
 	uint32_t ui32_wh_x10;
 	uint32_t ui32_wheel_speed_sensor_tick_counter_offset;
 
+#ifndef SW102
+	//uint32_t ui32_wh_x10_trip_a;
+	//uint32_t ui32_wh_x10_trip_b;
+	uint32_t ui32_wh_x10_trip_a_offset;
+	uint32_t ui32_wh_x10_trip_b_offset;
+#endif
+
 	uint8_t ui8_assist_level;
 	uint8_t ui8_number_of_assist_levels;
 	uint16_t ui16_wheel_perimeter;
@@ -92,7 +104,7 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_battery_max_current;
 	uint8_t ui8_motor_max_current;
 	uint8_t ui8_motor_current_min_adc;
-	uint8_t ui8_field_weakening;
+	uint8_t ui8_field_weakening_feature_enabled;
 	//uint8_t ui8_ramp_up_amps_per_second_x10;
 	uint16_t ui16_battery_low_voltage_cut_off_x10;
 	uint16_t ui16_battery_voltage_reset_wh_counter_x10;
@@ -105,6 +117,7 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_cruise_feature_enabled;
 	uint8_t ui8_walk_assist_level_factor[ASSIST_LEVEL_NUMBER];
 	uint8_t ui8_startup_motor_power_boost_feature_enabled;
+	uint8_t ui8_startup_assist_feature_enabled;
 	//uint8_t ui8_startup_motor_power_boost_always;
 	//uint8_t ui8_startup_motor_power_boost_limit_power;
 	//uint8_t ui8_startup_motor_power_boost_time;
@@ -113,6 +126,7 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_optional_ADC_function;
 	uint8_t ui8_motor_temperature_min_value_to_limit;
 	uint8_t ui8_motor_temperature_max_value_to_limit;
+	uint8_t ui8_screen_temperature;
 	uint8_t ui8_lcd_backlight_on_brightness;
 	uint8_t ui8_lcd_backlight_off_brightness;
 	//uint8_t ui8_offroad_feature_enabled;
@@ -145,6 +159,7 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_lights;
 	uint8_t ui8_braking;
 	uint8_t ui8_walk_assist;
+	uint8_t ui8_startup_assist;
 	//uint8_t ui8_offroad_mode;
 
   uint8_t ui8_torque_sensor_calibration_feature_enabled;
@@ -232,6 +247,13 @@ typedef struct ui_vars_struct {
 	uint32_t ui32_wh_sum_counter;
 	uint32_t ui32_wh_x10;
 
+#ifndef SW102
+	uint32_t ui32_wh_x10_trip_a;
+	uint32_t ui32_wh_x10_trip_b;
+	uint32_t ui32_wh_x10_trip_a_offset;
+	uint32_t ui32_wh_x10_trip_b_offset;
+#endif
+	
 	uint8_t ui8_assist_level;
 	uint8_t ui8_number_of_assist_levels;
 	uint16_t ui16_wheel_perimeter;
@@ -246,7 +268,7 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_battery_max_current;
 	uint8_t ui8_motor_max_current;
 	uint8_t ui8_motor_current_min_adc;
-	uint8_t ui8_field_weakening;
+	uint8_t ui8_field_weakening_feature_enabled;
 	//uint8_t ui8_ramp_up_amps_per_second_x10;
 	uint16_t ui16_battery_low_voltage_cut_off_x10;
 	uint16_t ui16_battery_voltage_reset_wh_counter_x10;
@@ -260,6 +282,7 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_cruise_feature_enabled;
 	uint8_t ui8_walk_assist_level_factor[ASSIST_LEVEL_NUMBER];
 	uint8_t ui8_startup_motor_power_boost_feature_enabled;
+	uint8_t ui8_startup_assist_feature_enabled;
 	//uint8_t ui8_startup_motor_power_boost_always;
 	//uint8_t ui8_startup_motor_power_boost_limit_power;
 	//uint8_t ui8_startup_motor_power_boost_time;
@@ -268,6 +291,7 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_optional_ADC_function;
 	uint8_t ui8_motor_temperature_min_value_to_limit;
 	uint8_t ui8_motor_temperature_max_value_to_limit;
+	uint8_t ui8_screen_temperature;
 	uint8_t ui8_lcd_power_off_time_minutes;
 	uint8_t ui8_lcd_backlight_on_brightness;
 	uint8_t ui8_lcd_backlight_off_brightness;
@@ -305,6 +329,7 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_lights;
 	uint8_t ui8_braking;
 	uint8_t ui8_walk_assist;
+	uint8_t ui8_startup_assist;
 	//uint8_t ui8_offroad_mode;
 	uint8_t ui8_buttons_up_down_invert;
 

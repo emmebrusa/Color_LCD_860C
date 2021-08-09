@@ -29,6 +29,12 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui16_wheel_perimeter = DEFAULT_VALUE_WHEEL_PERIMETER,
   .ui8_wheel_max_speed = DEFAULT_VALUE_WHEEL_MAX_SPEED,
   //.ui8_units_type = DEFAULT_VALUE_UNITS_TYPE,
+  
+#ifndef SW102
+  .ui32_wh_x10_trip_a_offset = DEFAULT_VALUE_WH_X10_TRIP_A_OFFSET,
+  .ui32_wh_x10_trip_b_offset = DEFAULT_VALUE_WH_X10_TRIP_B_OFFSET,
+#endif
+  
   .ui32_wh_x10_offset = DEFAULT_VALUE_WH_X10_OFFSET,
   .ui32_wh_x10_100_percent = DEFAULT_VALUE_HW_X10_100_PERCENT,
   .ui8_battery_soc_enable = DEAFULT_VALUE_SHOW_NUMERIC_BATTERY_SOC,
@@ -36,7 +42,7 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui8_target_max_battery_power_div25 = DEFAULT_VALUE_TARGET_MAX_BATTERY_POWER,
   .ui8_motor_max_current = DEFAULT_VALUE_MOTOR_MAX_CURRENT,
   .ui8_motor_current_min_adc = DEFAULT_VALUE_CURRENT_MIN_ADC,
-  //.ui8_field_weakening = DEFAULT_FIELD_WEAKENING,
+  //.ui8_field_weakening_feature_enabled = DEFAULT_VALUE_FIELD_WEAKENING_FEATURE_ENABLED,
   //.ui8_ramp_up_amps_per_second_x10 = DEFAULT_VALUE_RAMP_UP_AMPS_PER_SECOND_X10,
   .ui16_battery_low_voltage_cut_off_x10 = DEFAULT_VALUE_BATTERY_LOW_VOLTAGE_CUT_OFF_X10,
   //.ui8_motor_type = DEFAULT_VALUE_MOTOR_TYPE,
@@ -142,6 +148,8 @@ const eeprom_data_t m_eeprom_data_defaults = {
   DEFAULT_VALUE_MOTOR_TEMPERATURE_MIN_VALUE_LIMIT,
   .ui8_motor_temperature_max_value_to_limit =
   DEFAULT_VALUE_MOTOR_TEMPERATURE_MAX_VALUE_LIMIT,
+  .ui8_screen_temperature = 
+  DEFAULT_VALUE_SCREEN_TEMPERATURE,
   .ui16_battery_voltage_reset_wh_counter_x10 =
   DEFAULT_VALUE_BATTERY_VOLTAGE_RESET_WH_COUNTER_X10,
   .ui8_lcd_power_off_time_minutes =
@@ -161,8 +169,7 @@ const eeprom_data_t m_eeprom_data_defaults = {
   //DEFAULT_VALUE_OFFROAD_POWER_LIMIT_ENABLED,
   //.ui8_offroad_power_limit_div25 =
   //DEFAULT_VALUE_OFFROAD_POWER_LIMIT_DIV25,
-  .ui32_odometer_x10 =
-  DEFAULT_VALUE_ODOMETER_X10,
+  .ui32_odometer_x10 = DEFAULT_VALUE_ODOMETER_X10,
   //.ui8_walk_assist_feature_enabled =
   //DEFAULT_VALUE_WALK_ASSIST_FEATURE_ENABLED,
   .ui8_walk_assist_level_factor = {
@@ -211,6 +218,10 @@ const eeprom_data_t m_eeprom_data_defaults = {
 	pwmDutyField, // 20
 	motorFOCField, // 21
 	batteryPowerUsageField, // 22
+	tripAUsedWhField, // 23
+	tripBUsedWhField, // 24
+	tripAWhKmField, // 25
+	tripBWhKmField, // 26
 	
 	wheelSpeedGraph, // 0
 	tripDistanceGraph, // 1
@@ -449,6 +460,12 @@ void eeprom_init_variables(void) {
 			m_eeprom_data.ui8_wheel_max_speed * 10;
 	//ui_vars->ui8_units_type = m_eeprom_data.ui8_units_type;
 	ui_vars->ui8_units_type = (m_eeprom_data.ui8_bit_data_1 & 1);
+	
+#ifndef SW102
+	ui_vars->ui32_wh_x10_trip_a_offset = m_eeprom_data.ui32_wh_x10_trip_a_offset;
+	ui_vars->ui32_wh_x10_trip_b_offset = m_eeprom_data.ui32_wh_x10_trip_b_offset;
+#endif
+
 	ui_vars->ui32_wh_x10_offset = m_eeprom_data.ui32_wh_x10_offset;
 	ui_vars->ui32_wh_x10_100_percent =
 			m_eeprom_data.ui32_wh_x10_100_percent;
@@ -495,6 +512,7 @@ void eeprom_init_variables(void) {
 			m_eeprom_data.ui8_motor_temperature_min_value_to_limit;
 	ui_vars->ui8_motor_temperature_max_value_to_limit =
 			m_eeprom_data.ui8_motor_temperature_max_value_to_limit;
+	ui_vars->ui8_screen_temperature = m_eeprom_data.ui8_screen_temperature;		
 	ui_vars->ui16_battery_voltage_reset_wh_counter_x10 =
 			m_eeprom_data.ui16_battery_voltage_reset_wh_counter_x10;
 	ui_vars->ui8_lcd_power_off_time_minutes =
@@ -691,11 +709,18 @@ void eeprom_init_variables(void) {
       (m_eeprom_data.ui8_bit_data_2 & 128) >> 7;
   ui_vars->ui8_street_mode_cruise_enabled =
       m_eeprom_data.ui8_bit_data_3 & 1;
+#ifndef SW102
   ui_vars->ui8_config_shortcut_key_enabled =
 	  (m_eeprom_data.ui8_bit_data_3 & 2) >> 1;
-  ui_vars->ui8_field_weakening =	  
+  ui_vars->ui8_field_weakening_feature_enabled =	  
 	  (m_eeprom_data.ui8_bit_data_3 & 4) >> 2;
-	  
+  ui_vars->ui8_startup_assist_feature_enabled =
+	  (m_eeprom_data.ui8_bit_data_3 & 8) >> 3;
+#else
+  ui_vars->ui8_config_shortcut_key_enabled = 1;
+  ui_vars->ui8_field_weakening_feature_enabled = 1;
+  ui_vars->ui8_startup_assist_feature_enabled = 1;
+#endif
   //ui_vars->ui8_pedal_cadence_fast_stop =
   //    m_eeprom_data.ui8_bit_data_3 & 1;
   ui_vars->ui8_coast_brake_adc =
@@ -793,7 +818,8 @@ void eeprom_write_variables(void) {
 	
 	m_eeprom_data.ui8_bit_data_3 = (ui_vars->ui8_street_mode_cruise_enabled |
 	  (ui_vars->ui8_config_shortcut_key_enabled << 1) |
-	  (ui_vars->ui8_field_weakening << 2));
+	  (ui_vars->ui8_field_weakening_feature_enabled << 2) |
+	  (ui_vars->ui8_startup_assist_feature_enabled << 3));
 	// bit free for future use
 	
 	m_eeprom_data.ui8_riding_mode = ui_vars->ui8_riding_mode;
@@ -802,6 +828,12 @@ void eeprom_write_variables(void) {
 	m_eeprom_data.ui8_wheel_max_speed = (uint8_t)
 			(ui_vars->ui16_wheel_max_speed_x10 / 10);
 	//m_eeprom_data.ui8_units_type = ui_vars->ui8_units_type;
+	
+#ifndef SW102
+	m_eeprom_data.ui32_wh_x10_trip_a_offset = ui_vars->ui32_wh_x10_trip_a_offset;
+	m_eeprom_data.ui32_wh_x10_trip_b_offset = ui_vars->ui32_wh_x10_trip_b_offset;
+#endif
+
 	m_eeprom_data.ui32_wh_x10_offset = ui_vars->ui32_wh_x10_offset;
 	m_eeprom_data.ui32_wh_x10_100_percent =
 			ui_vars->ui32_wh_x10_100_percent;
@@ -816,8 +848,8 @@ void eeprom_write_variables(void) {
       ui_vars->ui8_motor_max_current;
   m_eeprom_data.ui8_motor_current_min_adc =
       ui_vars->ui8_motor_current_min_adc;
-	//m_eeprom_data.ui8_field_weakening =
-	//    ui_vars->ui8_field_weakening;
+	//m_eeprom_data.ui8_field_weakening_feature_enabled =
+	//    ui_vars->ui8_field_weakening_feature_enabled;
 	//m_eeprom_data.ui8_ramp_up_amps_per_second_x10 =
 	//	  ui_vars->ui8_ramp_up_amps_per_second_x10;
 	m_eeprom_data.ui16_battery_low_voltage_cut_off_x10 =
@@ -827,7 +859,8 @@ void eeprom_write_variables(void) {
 	//m_eeprom_data.ui8_motor_assistance_startup_without_pedal_rotation =
 	//		ui_vars->ui8_motor_assistance_startup_without_pedal_rotation;
 	m_eeprom_data.ui8_optional_ADC_function = ui_vars->ui8_optional_ADC_function;
-
+	m_eeprom_data.ui8_screen_temperature = ui_vars->ui8_screen_temperature;
+	
 	//COPY_ARRAY(&m_eeprom_data, ui_vars, ui16_assist_level_factor);
 	for (uint8_t i = 0; i < ASSIST_LEVEL_NUMBER; i++) {
 		m_eeprom_data.ui8_assist_level_factor[0][i] = ui_vars->ui8_assist_level_factor[0][i];

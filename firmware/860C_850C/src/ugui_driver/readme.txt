@@ -1,0 +1,1 @@
+To compile for 850C display version 2021, delete ugui_display_8x0c.c, rename ugui_display_8x0c.2021 to ugui_display_8x0c.c
