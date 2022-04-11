@@ -3,6 +3,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// Torque sensor calibration from main.h v20.1C.4 TSDZ2-OSF
+#define ADC_TORQUE_SENSOR_CALIBRATION_OFFSET    	6
+#define ADC_TORQUE_SENSOR_MIDDLE_OFFSET_ADJ			20
+#define ADC_TORQUE_SENSOR_RANGE_TARGET	  			160
+#define ADC_TORQUE_SENSOR_RANGE_TARGET_MIN 			133
+#define PEDAL_TORQUE_PER_10_BIT_ADC_STEP_BASE_X100	34 // base adc step
+#define WEIGHT_ON_PEDAL_FOR_STEP_CALIBRATION		24 // Kg
+#define PERCENT_TORQUE_SENSOR_RANGE_WITH_WEIGHT		75 // % of torque sensor range target with weight
+#define ADC_TORQUE_SENSOR_TARGET_WITH_WEIGHT		(uint16_t)((ADC_TORQUE_SENSOR_RANGE_TARGET*PERCENT_TORQUE_SENSOR_RANGE_WITH_WEIGHT)/100)
+
 // optional ADC function
 #define NOT_IN_USE							0
 #define TEMPERATURE_CONTROL					1
@@ -13,6 +23,7 @@
 #define CELSIUS								1
 #define FARENHEIT							2
 
+// assist level number
 #define ASSIST_LEVEL_NUMBER					9
 
 typedef enum {
@@ -80,6 +91,7 @@ typedef struct rt_vars_struct {
 	uint16_t ui16_battery_power_filtered;
 	uint16_t ui16_pedal_power_filtered;
 	uint8_t ui8_pedal_cadence_filtered;
+	uint8_t ui8_battery_soc_percent_calculation;
 	uint16_t ui16_battery_voltage_soc_x10;
 	uint32_t ui32_wh_sum_x5;
 	uint32_t ui32_wh_sum_counter;
@@ -107,6 +119,7 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_field_weakening_feature_enabled;
 	//uint8_t ui8_ramp_up_amps_per_second_x10;
 	uint16_t ui16_battery_low_voltage_cut_off_x10;
+	uint16_t ui16_battery_voltage_calibrate_percent_x10;
 	uint16_t ui16_battery_voltage_reset_wh_counter_x10;
 	uint16_t ui16_battery_pack_resistance_x1000;
 	uint8_t ui8_motor_type;
@@ -117,6 +130,7 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_cruise_feature_enabled;
 	uint8_t ui8_walk_assist_level_factor[ASSIST_LEVEL_NUMBER];
 	uint8_t ui8_startup_motor_power_boost_feature_enabled;
+	uint8_t ui8_startup_boost_at_zero;
 	uint8_t ui8_startup_assist_feature_enabled;
 	//uint8_t ui8_startup_motor_power_boost_always;
 	//uint8_t ui8_startup_motor_power_boost_limit_power;
@@ -185,6 +199,7 @@ typedef struct rt_vars_struct {
   uint8_t ui8_motor_acceleration_adjustment;
   uint8_t ui8_motor_deceleration_adjustment;
   uint8_t ui8_pedal_torque_per_10_bit_ADC_step_x100;
+  uint8_t ui8_pedal_torque_per_10_bit_ADC_step_adv_x100;
   uint8_t ui8_lights_configuration;
   uint8_t ui8_assist_whit_error_enabled;
   uint16_t ui16_startup_boost_torque_factor;
@@ -192,12 +207,16 @@ typedef struct rt_vars_struct {
   uint8_t ui8_riding_mode;
   uint16_t ui16_adc_pedal_torque_delta;
   uint16_t ui16_adc_pedal_torque_delta_boost;
+  uint8_t ui8_adc_pedal_torque_offset_adj;
+  uint8_t ui8_adc_pedal_torque_range_adj;
+  uint8_t ui8_adc_pedal_torque_angle_adj_index;
   uint16_t ui16_adc_pedal_torque_offset;
   uint16_t ui16_adc_pedal_torque_max;
   uint8_t ui8_weight_on_pedal;
-  uint16_t ui16_adc_pedal_torque_calibration;
+  uint16_t ui16_adc_pedal_torque_with_weight;
   uint8_t ui8_pedal_torque_ADC_step_calc_x100;
   uint8_t ui8_config_shortcut_key_enabled;
+  uint8_t ui8_battery_soc_auto_reset;
   
   battery_energy_h_km_t battery_energy_h_km;
 } rt_vars_t;
@@ -242,6 +261,7 @@ typedef struct ui_vars_struct {
 	uint16_t ui16_pedal_torque_filtered;
 	uint16_t ui16_pedal_power;
 	uint8_t ui8_pedal_cadence_filtered;
+	uint8_t ui8_battery_soc_percent_calculation;
 	uint16_t ui16_battery_voltage_soc_x10;
 	uint32_t ui32_wh_sum_x5;
 	uint32_t ui32_wh_sum_counter;
@@ -271,6 +291,7 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_field_weakening_feature_enabled;
 	//uint8_t ui8_ramp_up_amps_per_second_x10;
 	uint16_t ui16_battery_low_voltage_cut_off_x10;
+	uint16_t ui16_battery_voltage_calibrate_percent_x10;
 	uint16_t ui16_battery_voltage_reset_wh_counter_x10;
 	uint16_t ui16_battery_pack_resistance_x1000;
 	uint16_t ui16_battery_pack_resistance_estimated_x1000;
@@ -282,6 +303,7 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_cruise_feature_enabled;
 	uint8_t ui8_walk_assist_level_factor[ASSIST_LEVEL_NUMBER];
 	uint8_t ui8_startup_motor_power_boost_feature_enabled;
+	uint8_t ui8_startup_boost_at_zero;
 	uint8_t ui8_startup_assist_feature_enabled;
 	//uint8_t ui8_startup_motor_power_boost_always;
 	//uint8_t ui8_startup_motor_power_boost_limit_power;
@@ -449,6 +471,7 @@ typedef struct ui_vars_struct {
   uint8_t ui8_motor_acceleration_adjustment;
   uint8_t ui8_motor_deceleration_adjustment;
   uint8_t ui8_pedal_torque_per_10_bit_ADC_step_x100;
+  uint8_t ui8_pedal_torque_per_10_bit_ADC_step_adv_x100;
   uint8_t ui8_lights_configuration;
   uint8_t ui8_assist_whit_error_enabled;
   uint16_t ui16_startup_boost_torque_factor;
@@ -456,12 +479,16 @@ typedef struct ui_vars_struct {
   uint8_t ui8_riding_mode;
   uint16_t ui16_adc_pedal_torque_delta;
   uint16_t ui16_adc_pedal_torque_delta_boost;
+  uint8_t ui8_adc_pedal_torque_offset_adj;
+  uint8_t ui8_adc_pedal_torque_range_adj;
+  uint8_t ui8_adc_pedal_torque_angle_adj_index;
   uint16_t ui16_adc_pedal_torque_offset;
   uint16_t ui16_adc_pedal_torque_max;
   uint8_t ui8_weight_on_pedal;
-  uint16_t ui16_adc_pedal_torque_calibration;
+  uint16_t ui16_adc_pedal_torque_with_weight;
   uint8_t ui8_pedal_torque_ADC_step_calc_x100;
   uint8_t ui8_config_shortcut_key_enabled;
+  uint8_t ui8_battery_soc_auto_reset;
   
 } ui_vars_t;
 

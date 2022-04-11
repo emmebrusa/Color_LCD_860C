@@ -33,12 +33,14 @@
 #define WALK_ASSIST_THRESHOLD_SPEED_X10			70  // 70 -> 7.0 km/h
 #define CRUISE_THRESHOLD_SPEED_X10				90  // 90 -> 9.0 km/h
 static uint8_t ui8_set_riding_mode = 0; // 0=disabled, 1=enabled
-static uint8_t ui8_display_riding_mode_timeout = 60;
+static uint8_t ui8_configuration_flag = 0;
+volatile uint8_t ui8_display_ready_counter = 70;
 volatile uint8_t ui8_battery_soc_used[100] = { 1, 1, 2, 3, 4, 5, 6, 8, 10, 12, 13, 15, 17, 19, 21, 23, 25, 26, 28,
 	29, 31, 33, 34, 36, 38, 39, 41, 42, 44, 46, 47, 49, 51, 52, 53, 54, 55, 57, 58, 59, 61, 62, 63, 65, 66,	67,
 	69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 85, 86, 87, 87, 88, 88, 89, 89, 90, 90,
 	91,	91, 91, 92, 92, 92, 93, 93, 93, 94, 94, 94, 95, 95, 95, 96, 96, 96, 97, 97, 97, 98, 98, 98, 99, 99, 99 };
 // table tested with Panasonic NCR18650GA, voltage reset Wh = 4.15 x num.cells, voltage cut-off = 2.90 x num.cells
+volatile uint8_t ui8_battery_soc_index = 0;
 
 #ifndef SW102
 // for calculate Wh trip A and B
@@ -1108,7 +1110,7 @@ void setWarning(ColorOp color, const char *str) {
 		strncpy(warningStr, str, sizeof(warningStr));
 }
 
-static const char *motorErrors[] = { _S("None", "None"), _S("Motor not init", "Mot no ini"), "Torque Fault", "Cadence Fault", "Motor Blocked", "Throttle Fault", "Free", "Comms", "Speed Fault"};
+static const char *motorErrors[] = { _S("None", "None"), _S("Motor not init", "Mot no ini"), "Torque Fault", "Cadence Fault", "Motor Blocked", "Throttle Fault", "Comms", "Over current", "Speed Fault"};
 
 void warnings(void) {
   //uint32_t motor_temp_limit = ui_vars.ui8_temperature_limit_feature_enabled & 1;
@@ -1126,11 +1128,11 @@ void warnings(void) {
   }
   
   // display riding mode
-  if(ui8_display_riding_mode_timeout)
-	  ui8_display_riding_mode_timeout--;
+  if(ui8_display_ready_counter)
+	  ui8_display_ready_counter--;
   
   if(((ui8_set_riding_mode)&&(!ui_vars.ui8_assist_level))||
-    (ui8_display_riding_mode_timeout)) {
+    (ui8_display_ready_counter)) {
 	  switch (ui_vars.ui8_riding_mode) {
 		case 1: setWarning(ColorNormal, "POWER ASSIST"); break;
 		case 2: setWarning(ColorNormal, "TORQUE ASSIST"); break;
@@ -1323,10 +1325,13 @@ void showNextScreen() {
 	g_showNextScreenPreviousIndex = g_showNextScreenIndex;
 
 	// increase to index of next screen
-	if (screens[++g_showNextScreenIndex] == NULL) {
-		g_showNextScreenIndex = 0;
+	if(!ui8_configuration_flag) {
+		if (screens[++g_showNextScreenIndex] == NULL) {
+			g_showNextScreenIndex = 0;
+		}
 	}
-
+	ui8_configuration_flag = 0;
+	
 	screenShow(screens[g_showNextScreenIndex]);
 }
 
@@ -1357,6 +1362,7 @@ static bool appwide_onpress(buttons_events_t events)
 	 (ui_vars.ui8_config_shortcut_key_enabled)&&
 	 (ui_vars.ui8_assist_level)))
   {
+	    ui8_configuration_flag = 1;
 		screenShow(&configScreen);
 		return true;
   }
@@ -1491,9 +1497,9 @@ void BatterySOCReset(void) {
 		if(ui_vars.ui16_battery_voltage_soc_x10 < ui_vars.ui16_battery_voltage_reset_wh_counter_x10) {
 			reset_wh();
 			
-			uint8_t ui8_battery_soc_index = 100
-				- ((ui_vars.ui16_battery_voltage_soc_x10 - ui_vars.ui16_battery_low_voltage_cut_off_x10) * 100)
-				/ (ui_vars.ui16_battery_voltage_reset_wh_counter_x10 - ui_vars.ui16_battery_low_voltage_cut_off_x10);
+			ui8_battery_soc_index = (uint8_t) ((uint16_t) (100
+			- ((ui_vars.ui16_battery_voltage_soc_x10 - ui_vars.ui16_battery_low_voltage_cut_off_x10) * 100)
+			/ (ui_vars.ui16_battery_voltage_reset_wh_counter_x10 - ui_vars.ui16_battery_low_voltage_cut_off_x10)));
 			
 			ui_vars.ui32_wh_x10_offset = (ui_vars.ui32_wh_x10_100_percent
 				* ui8_battery_soc_used[ui8_battery_soc_index]) / 100;
@@ -1512,9 +1518,10 @@ void SetDefaultWeight(void) {
 	if (ui8_g_configuration_set_default_weight) {
 		ui8_g_configuration_set_default_weight = 0;
 		
-		ui_vars.ui8_weight_on_pedal = 25; // kg
-		ui_vars.ui16_adc_pedal_torque_calibration = ui_vars.ui16_adc_pedal_torque_offset
-			+ ((ui_vars.ui16_adc_pedal_torque_max - ui_vars.ui16_adc_pedal_torque_offset) * 75) / 100;
+		ui_vars.ui8_weight_on_pedal = WEIGHT_ON_PEDAL_FOR_STEP_CALIBRATION; // kg
+
+		ui_vars.ui16_adc_pedal_torque_with_weight = ui_vars.ui16_adc_pedal_torque_offset
+			+ ((ui_vars.ui16_adc_pedal_torque_max - ui_vars.ui16_adc_pedal_torque_offset) * PERCENT_TORQUE_SENSOR_RANGE_WITH_WEIGHT) / 100;
 	}
 }
 

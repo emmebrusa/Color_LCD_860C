@@ -1139,24 +1139,24 @@ static bool renderEditable(FieldLayout *layout) {
     static uint8_t cnt_down = 0;
 
 		if (buttons_get_up_state()) {
-      if (cnt_up < 255)
-        cnt_up++;
+			if (cnt_up < 255)
+				cnt_up++;
 
 			changeEditable(true, (cnt_up > 10) ? true : false);
 		}
 		else {
-      cnt_up = 0;
+			cnt_up = 0;
 		}
 
 		if (buttons_get_down_state()) {
-      if (cnt_down < 255)
-        cnt_down++;
+			if (cnt_down < 255)
+				cnt_down++;
 
 			changeEditable(false, (cnt_down > 10) ? true : false);
 		}
-    else {
-      cnt_down = 0;
-    }
+		else {
+			cnt_down = 0;
+		}
 	}
 
 	// Get the value we are trying to show (it might be a num or an enum)

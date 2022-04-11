@@ -45,6 +45,7 @@ const eeprom_data_t m_eeprom_data_defaults = {
   //.ui8_field_weakening_feature_enabled = DEFAULT_VALUE_FIELD_WEAKENING_FEATURE_ENABLED,
   //.ui8_ramp_up_amps_per_second_x10 = DEFAULT_VALUE_RAMP_UP_AMPS_PER_SECOND_X10,
   .ui16_battery_low_voltage_cut_off_x10 = DEFAULT_VALUE_BATTERY_LOW_VOLTAGE_CUT_OFF_X10,
+  .ui16_battery_voltage_calibrate_percent_x10 = DEFAULT_VALUE_BATTERY_VOLTAGE_CALIBRATE_PERCENT_X10,
   //.ui8_motor_type = DEFAULT_VALUE_MOTOR_TYPE,
   //.ui8_motor_current_control_mode = DEFAULT_VALUE_MOTOR_CURRENT_CONTROL_MODE,
   //.ui8_motor_assistance_startup_without_pedal_rotation = DEFAULT_VALUE_MOTOR_ASSISTANCE_WITHOUT_PEDAL_ROTATION,
@@ -150,6 +151,10 @@ const eeprom_data_t m_eeprom_data_defaults = {
   DEFAULT_VALUE_MOTOR_TEMPERATURE_MAX_VALUE_LIMIT,
   .ui8_screen_temperature = 
   DEFAULT_VALUE_SCREEN_TEMPERATURE,
+  .ui8_battery_soc_percent_calculation = 
+  DEFAULT_VALUE_BATTERY_SOC_PERCENT_CALCULATION,
+  .ui8_battery_soc_auto_reset = 
+  DEFAULT_VALUE_BATTERY_SOC_RESET,
   .ui16_battery_voltage_reset_wh_counter_x10 =
   DEFAULT_VALUE_BATTERY_VOLTAGE_RESET_WH_COUNTER_X10,
   .ui8_lcd_power_off_time_minutes =
@@ -382,13 +387,17 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui8_motor_deceleration_adjustment = DEFAULT_VALUE_MOTOR_DECELERATION_ADJUSTMENT,
   .ui8_time_field_enable = DEAFULT_VALUE_TIME_FIELD,
   .ui8_pedal_torque_per_10_bit_ADC_step_x100 = DEFAULT_VALUE_PEDAL_TORQUE_ADC_STEP_x100,
+  .ui8_pedal_torque_per_10_bit_ADC_step_adv_x100 = DEFAULT_VALUE_PEDAL_TORQUE_ADC_STEP_ADV_x100,
   .ui8_lights_configuration = DEFAULT_LIGHTS_CONFIGURATION,
   .ui16_startup_boost_torque_factor = DEFAULT_VALUE_STARTUP_BOOST_TORQUE_FACTOR,
   .ui8_startup_boost_cadence_step = DEFAULT_VALUE_STARTUP_BOOST_CADENCE_STEP,
+  .ui8_adc_pedal_torque_offset_adj = DEFAULT_TORQUE_SENSOR_ADC_OFFSET_ADJ,
+  .ui8_adc_pedal_torque_range_adj = DEFAULT_TORQUE_SENSOR_ADC_RANGE_ADJ,
+  .ui8_adc_pedal_torque_angle_adj_index = DEFAULT_TORQUE_SENSOR_ADC_ANGLE_ADJ_INDEX,
   .ui16_adc_pedal_torque_offset = DEFAULT_TORQUE_SENSOR_ADC_OFFSET,
   .ui16_adc_pedal_torque_max = DEFAULT_TORQUE_SENSOR_ADC_MAX,
   .ui8_weight_on_pedal = DEFAULT_WEIGHT_ON_PEDAL_CALIBRATION,
-  .ui16_adc_pedal_torque_calibration = DEFAULT_TORQUE_SENSOR_ADC_CALIBRATION,
+  .ui16_adc_pedal_torque_with_weight = DEFAULT_TORQUE_SENSOR_ADC_WITH_WEIGHT,
 
 #ifndef SW102
   .ui8_trip_a_auto_reset = DEFAULT_VALUE_TRIP_AUTO_RESET_ENABLE,
@@ -423,12 +432,23 @@ void eeprom_init() {
 			sizeof(m_eeprom_data)
 					/ sizeof(uint32_t))
 	    || m_eeprom_data.eeprom_version < EEPROM_MIN_COMPAT_VERSION
-	    || m_eeprom_data.eeprom_version > EEPROM_VERSION
-	    )
-		// If we are using default data it doesn't get written to flash until someone calls write
-		memcpy(&m_eeprom_data, &m_eeprom_data_defaults,
+	    || m_eeprom_data.eeprom_version > EEPROM_VERSION) {
+			
+			// If we are using default data it doesn't get written to flash until someone calls write
+			memcpy(&m_eeprom_data, &m_eeprom_data_defaults,
 				sizeof(m_eeprom_data_defaults));
-
+	}
+	else if (m_eeprom_data.eeprom_version < EEPROM_VERSION) {
+		m_eeprom_data.eeprom_version = EEPROM_VERSION;
+		m_eeprom_data.ui8_adc_pedal_torque_offset_adj = DEFAULT_TORQUE_SENSOR_ADC_OFFSET_ADJ;
+		m_eeprom_data.ui8_adc_pedal_torque_range_adj = DEFAULT_TORQUE_SENSOR_ADC_RANGE_ADJ;
+		m_eeprom_data.ui16_battery_voltage_calibrate_percent_x10 = DEFAULT_VALUE_BATTERY_VOLTAGE_CALIBRATE_PERCENT_X10;
+		m_eeprom_data.ui8_battery_soc_percent_calculation = DEFAULT_VALUE_BATTERY_SOC_PERCENT_CALCULATION;
+		m_eeprom_data.ui8_battery_soc_auto_reset = DEFAULT_VALUE_BATTERY_SOC_RESET;
+		m_eeprom_data.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100 = DEFAULT_VALUE_PEDAL_TORQUE_ADC_STEP_ADV_x100;
+		m_eeprom_data.ui8_adc_pedal_torque_angle_adj_index = DEFAULT_TORQUE_SENSOR_ADC_ANGLE_ADJ_INDEX;
+	}
+	
 //	// Perform whatever migrations we need to update old eeprom formats
 //	if (m_eeprom_data.eeprom_version < EEPROM_VERSION) {
 //
@@ -485,6 +505,8 @@ void eeprom_init_variables(void) {
 	//		m_eeprom_data.ui8_ramp_up_amps_per_second_x10;
 	ui_vars->ui16_battery_low_voltage_cut_off_x10 =
 			m_eeprom_data.ui16_battery_low_voltage_cut_off_x10;
+	ui_vars->ui16_battery_voltage_calibrate_percent_x10 =
+			m_eeprom_data.ui16_battery_voltage_calibrate_percent_x10;
 	ui_vars->ui8_motor_type = (m_eeprom_data.ui8_bit_data_1 & 2) >> 1;
 	//ui_vars->ui8_motor_current_control_mode = (m_eeprom_data.ui8_bit_data_1 & 4) >> 2;
 	ui_vars->ui8_motor_assistance_startup_without_pedal_rotation =
@@ -512,7 +534,11 @@ void eeprom_init_variables(void) {
 			m_eeprom_data.ui8_motor_temperature_min_value_to_limit;
 	ui_vars->ui8_motor_temperature_max_value_to_limit =
 			m_eeprom_data.ui8_motor_temperature_max_value_to_limit;
-	ui_vars->ui8_screen_temperature = m_eeprom_data.ui8_screen_temperature;		
+	ui_vars->ui8_screen_temperature = m_eeprom_data.ui8_screen_temperature;
+	ui_vars->ui8_battery_soc_percent_calculation =
+			m_eeprom_data.ui8_battery_soc_percent_calculation;
+	ui_vars->ui8_battery_soc_auto_reset =
+			m_eeprom_data.ui8_battery_soc_auto_reset;
 	ui_vars->ui16_battery_voltage_reset_wh_counter_x10 =
 			m_eeprom_data.ui16_battery_voltage_reset_wh_counter_x10;
 	ui_vars->ui8_lcd_power_off_time_minutes =
@@ -721,6 +747,8 @@ void eeprom_init_variables(void) {
   ui_vars->ui8_field_weakening_feature_enabled = 1;
   ui_vars->ui8_startup_assist_feature_enabled = 1;
 #endif
+  ui_vars->ui8_startup_boost_at_zero =
+	  (m_eeprom_data.ui8_bit_data_3 & 16) >> 4;
   //ui_vars->ui8_pedal_cadence_fast_stop =
   //    m_eeprom_data.ui8_bit_data_3 & 1;
   ui_vars->ui8_coast_brake_adc =
@@ -743,6 +771,8 @@ void eeprom_init_variables(void) {
 	  m_eeprom_data.ui8_motor_deceleration_adjustment;
   ui_vars->ui8_pedal_torque_per_10_bit_ADC_step_x100 =
 	  m_eeprom_data.ui8_pedal_torque_per_10_bit_ADC_step_x100;
+  ui_vars->ui8_pedal_torque_per_10_bit_ADC_step_adv_x100 =
+	  m_eeprom_data.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100;
   ui_vars->ui8_lights_configuration =
 	  m_eeprom_data.ui8_lights_configuration;
   ui_vars->ui8_assist_whit_error_enabled =
@@ -751,14 +781,20 @@ void eeprom_init_variables(void) {
 	  m_eeprom_data.ui16_startup_boost_torque_factor;
   ui_vars->ui8_startup_boost_cadence_step =
 	  m_eeprom_data.ui8_startup_boost_cadence_step;
+  ui_vars->ui8_adc_pedal_torque_offset_adj =
+	  m_eeprom_data.ui8_adc_pedal_torque_offset_adj;
+  ui_vars->ui8_adc_pedal_torque_range_adj =
+	  m_eeprom_data.ui8_adc_pedal_torque_range_adj;
+  ui_vars->ui8_adc_pedal_torque_angle_adj_index =
+	  m_eeprom_data.ui8_adc_pedal_torque_angle_adj_index;
   ui_vars->ui16_adc_pedal_torque_offset =
 	  m_eeprom_data.ui16_adc_pedal_torque_offset;
   ui_vars->ui16_adc_pedal_torque_max =
 	  m_eeprom_data.ui16_adc_pedal_torque_max;
   ui_vars->ui8_weight_on_pedal =
 	  m_eeprom_data.ui8_weight_on_pedal;
-  ui_vars->ui16_adc_pedal_torque_calibration =
-	  m_eeprom_data.ui16_adc_pedal_torque_calibration;
+  ui_vars->ui16_adc_pedal_torque_with_weight =
+	  m_eeprom_data.ui16_adc_pedal_torque_with_weight;
   
 #ifndef SW102
   ui_vars->ui8_trip_a_auto_reset =
@@ -819,7 +855,8 @@ void eeprom_write_variables(void) {
 	m_eeprom_data.ui8_bit_data_3 = (ui_vars->ui8_street_mode_cruise_enabled |
 	  (ui_vars->ui8_config_shortcut_key_enabled << 1) |
 	  (ui_vars->ui8_field_weakening_feature_enabled << 2) |
-	  (ui_vars->ui8_startup_assist_feature_enabled << 3));
+	  (ui_vars->ui8_startup_assist_feature_enabled << 3) |
+	  (ui_vars->ui8_startup_boost_at_zero << 4));
 	// bit free for future use
 	
 	m_eeprom_data.ui8_riding_mode = ui_vars->ui8_riding_mode;
@@ -854,12 +891,18 @@ void eeprom_write_variables(void) {
 	//	  ui_vars->ui8_ramp_up_amps_per_second_x10;
 	m_eeprom_data.ui16_battery_low_voltage_cut_off_x10 =
 		ui_vars->ui16_battery_low_voltage_cut_off_x10;
+	m_eeprom_data.ui16_battery_voltage_calibrate_percent_x10 =
+		ui_vars->ui16_battery_voltage_calibrate_percent_x10;
 	//m_eeprom_data.ui8_motor_type = ui_vars->ui8_motor_type;
 	//m_eeprom_data.ui8_motor_current_control_mode = ui_vars->ui8_motor_current_control_mode;
 	//m_eeprom_data.ui8_motor_assistance_startup_without_pedal_rotation =
 	//		ui_vars->ui8_motor_assistance_startup_without_pedal_rotation;
 	m_eeprom_data.ui8_optional_ADC_function = ui_vars->ui8_optional_ADC_function;
 	m_eeprom_data.ui8_screen_temperature = ui_vars->ui8_screen_temperature;
+	m_eeprom_data.ui8_battery_soc_percent_calculation =
+			ui_vars->ui8_battery_soc_percent_calculation;
+	m_eeprom_data.ui8_battery_soc_auto_reset =
+			ui_vars->ui8_battery_soc_auto_reset;
 	
 	//COPY_ARRAY(&m_eeprom_data, ui_vars, ui16_assist_level_factor);
 	for (uint8_t i = 0; i < ASSIST_LEVEL_NUMBER; i++) {
@@ -1061,20 +1104,28 @@ void eeprom_write_variables(void) {
 	  ui_vars->ui8_motor_deceleration_adjustment;
   m_eeprom_data.ui8_pedal_torque_per_10_bit_ADC_step_x100 =
 	  ui_vars->ui8_pedal_torque_per_10_bit_ADC_step_x100;
+  m_eeprom_data.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100 =
+	  ui_vars->ui8_pedal_torque_per_10_bit_ADC_step_adv_x100;
   m_eeprom_data.ui8_lights_configuration =
 	  ui_vars->ui8_lights_configuration;
   m_eeprom_data.ui16_startup_boost_torque_factor =
 	  ui_vars->ui16_startup_boost_torque_factor;
   m_eeprom_data.ui8_startup_boost_cadence_step =
 	  ui_vars->ui8_startup_boost_cadence_step;
+  m_eeprom_data.ui8_adc_pedal_torque_offset_adj =
+	  ui_vars->ui8_adc_pedal_torque_offset_adj;
+  m_eeprom_data.ui8_adc_pedal_torque_range_adj =
+	  ui_vars->ui8_adc_pedal_torque_range_adj;
+  m_eeprom_data.ui8_adc_pedal_torque_angle_adj_index =
+	  ui_vars->ui8_adc_pedal_torque_angle_adj_index;
   m_eeprom_data.ui16_adc_pedal_torque_offset =
 	  ui_vars->ui16_adc_pedal_torque_offset;
   m_eeprom_data.ui16_adc_pedal_torque_max =
 	  ui_vars->ui16_adc_pedal_torque_max;
   m_eeprom_data.ui8_weight_on_pedal =
 	  ui_vars->ui8_weight_on_pedal;
-  m_eeprom_data.ui16_adc_pedal_torque_calibration =
-	  ui_vars->ui16_adc_pedal_torque_calibration;
+  m_eeprom_data.ui16_adc_pedal_torque_with_weight =
+	  ui_vars->ui16_adc_pedal_torque_with_weight;
 	  
 	flash_write_words(&m_eeprom_data, sizeof(m_eeprom_data) / sizeof(uint32_t));
 }

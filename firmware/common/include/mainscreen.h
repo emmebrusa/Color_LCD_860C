@@ -3,6 +3,8 @@
 #include "screen.h"
 
 extern volatile uint8_t ui8_battery_soc_used[100];
+extern volatile uint8_t ui8_battery_soc_index;
+extern volatile uint8_t ui8_display_ready_counter;
 
 #ifndef SW102
 // for calculate Wh trip A and B

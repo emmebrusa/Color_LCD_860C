@@ -1,0 +1,108 @@
+
+Color LCD 860C display for TSDZ2 Open Source Firmware v20.1C.4
+
+Assistance mode available
+	Power assist
+	Torque assist
+	Cadence assist
+	eMTB assist
+	Hybrid assist
+The choice of assistance mode is in the main screen.
+At level 0, ON/OFF button to view the current mode, UP/DOWN button to change, ON/OFF button to confirm.
+
+Display Menus (new items)
+
+  Battery
+	Voltage cal %
+
+  SOC
+	Calculation
+	Manual reset
+	Auto reset %
+
+  Motor
+	Max motor power
+	Motor acceleration
+	Motor deceleration
+	Field weakening
+
+  Torque sensor
+	Torque adc step
+	Torque adc step adv
+	Torque offset adj
+	Torque range adj
+	Torque angle adj
+	Torque adc offset
+	Torque adc max
+	Weight on pedal
+	Torque adc on weight
+	ADC torque step calc
+	Default weight
+
+  Assist levels
+	Power assist
+		Level 1
+		Level x
+	Torque assist
+		Level 1
+		Level x
+	Cadence assist
+		Level 1
+		Level x
+	eMTB assist
+		Level 1
+		Level x
+	Assistance values for all modes from 1 to 254, for eMTB from 1 to 20.
+
+  Walk assist
+	Speed 1
+	Speed x
+	Cruise feature
+
+  Startup boost
+	Boost torque factor
+	Boost cadence step
+	Boost at zero (cadence/speed)
+
+  Street mode
+	Cruise enable
+
+  Various
+	Lights configuration
+	Assist with error
+
+  Display
+	Config shortcut key
+
+  Technical (view only)
+	ADC torque delta
+	ADC torque boost
+
+System msg:
+Wait TSDZ2
+SIMULATING TSDZ2!
+Error brakes or comms
+Error RX line
+TSDZ2 firmware error
+Error set config
+
+Error code:
+e 1 Motor not init
+e 2 Torque Fault
+e 3 Cadence Fault
+e 4 Motor Blocked
+e 5 Throttle Fault
+e 6 Comms Fault
+e 7 Over current
+e 8 Speed Fault
+
+
+Changed files 860C
+configscreen.c
+eeprom.c
+mainscreen.c
+state.c
+configscreen.h
+eeprom.h
+state.h
+

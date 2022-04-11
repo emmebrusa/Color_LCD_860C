@@ -37,8 +37,18 @@ typedef enum {
   FRAME_TYPE_FIRMWARE_VERSION = 4,
 } frame_type_t;
 
+static uint8_t ui8_pedal_torque_ADC_step_adv_calc_x100 = 0;
+static uint16_t ui16_adc_pedal_torque_range = 0;
+static uint8_t ui8_adc_torque_calibration_offset = ADC_TORQUE_SENSOR_CALIBRATION_OFFSET;
+static uint8_t ui8_adc_torque_middle_offset_adj = ADC_TORQUE_SENSOR_MIDDLE_OFFSET_ADJ;
+static uint8_t ui8_adc_pedal_torque_angle_adj_array[41] = {160, 138, 120, 107, 96, 88, 80, 74, 70, 66, 63, 59, 56, 52,
+			50, 47, 44, 42, 39, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16 };
+static uint16_t ui16_battery_voltage_soc_x10_temp = 0;
+static uint8_t ui8_startup_boost_state = 0;
+uint16_t filter(uint16_t ui16_new_value, uint16_t ui16_old_value, uint8_t ui8_alpha);
 
 static uint8_t ui8_m_usart1_received_first_package = 0;
+static uint8_t ui8_battery_soc_init_flag = 0;
 uint8_t ui8_g_battery_soc;
 volatile uint8_t ui8_g_motorVariablesStabilized = 0;
 
@@ -287,9 +297,10 @@ void rt_send_tx_package(frame_type_t type) {
 
 		// battery max current
 		ui8_usart1_tx_buffer[7] = rt_vars.ui8_battery_max_current;
-
+		
+		// feature enabled
 		ui8_usart1_tx_buffer[8] = (rt_vars.ui8_startup_motor_power_boost_feature_enabled & 1)|
-		  // bit free for future use
+		  ((rt_vars.ui8_startup_boost_at_zero & 1) << 1) |
 		  // bit free for future use
           ((rt_vars.ui8_torque_sensor_calibration_feature_enabled & 1) << 3) |
           ((rt_vars.ui8_assist_whit_error_enabled & 1) << 4) |
@@ -314,17 +325,18 @@ void rt_send_tx_package(frame_type_t type) {
 		
 		// motor deceleration adjustment
 		ui8_usart1_tx_buffer[15] = rt_vars.ui8_motor_deceleration_adjustment;
-			
-		// pedal torque adc step x100 to calculate human power
-		rt_vars.ui8_pedal_torque_ADC_step_calc_x100 = (rt_vars.ui8_weight_on_pedal * 167)
-			/ (rt_vars.ui16_adc_pedal_torque_calibration - rt_vars.ui16_adc_pedal_torque_offset);
+		
+		// torque sensor offset, range and angle adjustment
+		ui8_usart1_tx_buffer[50] = rt_vars.ui8_adc_pedal_torque_offset_adj;
+		ui8_usart1_tx_buffer[51] = rt_vars.ui8_adc_pedal_torque_range_adj;
+		ui8_usart1_tx_buffer[52] = ui8_adc_pedal_torque_angle_adj_array[rt_vars.ui8_adc_pedal_torque_angle_adj_index];
+		ui8_usart1_tx_buffer[53] = ui8_adc_torque_calibration_offset;
+		ui8_usart1_tx_buffer[54] = ui8_adc_torque_middle_offset_adj;
 		
 		// torque sensor offset & max for calibration
-		ui8_usart1_tx_buffer[50] = (uint8_t) (rt_vars.ui16_adc_pedal_torque_offset & 0xff);
-		ui8_usart1_tx_buffer[51] = (uint8_t) (rt_vars.ui16_adc_pedal_torque_offset >> 8);
-		ui16_temp = (rt_vars.ui16_adc_pedal_torque_max - rt_vars.ui16_adc_pedal_torque_offset);
-		ui8_usart1_tx_buffer[78] = (uint8_t) (ui16_temp  & 0xff);
-		ui8_usart1_tx_buffer[79] = (uint8_t) (ui16_temp >> 8);
+		//ui16_adc_pedal_torque_range = (rt_vars.ui16_adc_pedal_torque_max - rt_vars.ui16_adc_pedal_torque_offset);
+		ui8_usart1_tx_buffer[78] = (uint8_t) (ui16_adc_pedal_torque_range  & 0xff);
+		ui8_usart1_tx_buffer[79] = (uint8_t) (ui16_adc_pedal_torque_range >> 8);
 
 		// disable motor current min adc
 		rt_vars.ui8_motor_current_min_adc = 0;
@@ -340,9 +352,32 @@ void rt_send_tx_package(frame_type_t type) {
 
 		ui8_usart1_tx_buffer[81] = rt_vars.ui8_coast_brake_adc;
 		ui8_usart1_tx_buffer[82] = rt_vars.ui8_lights_configuration;
-		ui8_usart1_tx_buffer[83] = rt_vars.ui8_pedal_torque_per_10_bit_ADC_step_x100;
+		
+		if(rt_vars.ui8_torque_sensor_calibration_feature_enabled) {
+			ui8_usart1_tx_buffer[83] = rt_vars.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100;
+		}
+		else {
+			ui8_usart1_tx_buffer[83] = rt_vars.ui8_pedal_torque_per_10_bit_ADC_step_x100;
+		}
+		
 		ui8_usart1_tx_buffer[84] = rt_vars.ui8_torque_sensor_adc_threshold;
-	
+		
+		// calculate pedal torque ADC step for human power
+		uint16_t ui16_adc_pedal_torque_range_target_max = ADC_TORQUE_SENSOR_RANGE_TARGET_MIN
+			* (100 + rt_vars.ui8_adc_pedal_torque_range_adj) / 100;
+		
+		uint16_t ui16_adc_pedal_torque_delta_with_weight = (((((ADC_TORQUE_SENSOR_TARGET_WITH_WEIGHT * ADC_TORQUE_SENSOR_RANGE_TARGET_MIN) / ADC_TORQUE_SENSOR_RANGE_TARGET)
+			* (100 + rt_vars.ui8_adc_pedal_torque_range_adj) / 100)
+			* (ADC_TORQUE_SENSOR_TARGET_WITH_WEIGHT - ui8_adc_torque_calibration_offset + rt_vars.ui8_adc_pedal_torque_offset_adj
+			- ((((ui8_adc_torque_middle_offset_adj * 2) - ui8_adc_torque_calibration_offset - rt_vars.ui8_adc_pedal_torque_offset_adj) * ADC_TORQUE_SENSOR_TARGET_WITH_WEIGHT)
+			/ ADC_TORQUE_SENSOR_RANGE_TARGET))) / ADC_TORQUE_SENSOR_TARGET_WITH_WEIGHT);
+
+		ui8_pedal_torque_ADC_step_adv_calc_x100 = (uint8_t)((uint16_t)(((WEIGHT_ON_PEDAL_FOR_STEP_CALIBRATION * 167)
+			/ ((ui16_adc_pedal_torque_delta_with_weight * ui16_adc_pedal_torque_range_target_max)
+			/ (ui16_adc_pedal_torque_range_target_max - (((ui16_adc_pedal_torque_range_target_max - ui16_adc_pedal_torque_delta_with_weight) * 10)
+			/ ui8_adc_pedal_torque_angle_adj_array[rt_vars.ui8_adc_pedal_torque_angle_adj_index])))
+			* rt_vars.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100) / PEDAL_TORQUE_PER_10_BIT_ADC_STEP_BASE_X100));
+
 		crc_len = 86;
 		ui8_usart1_tx_buffer[1] = crc_len;
 		break;
@@ -384,7 +419,10 @@ void rt_low_pass_filter_battery_voltage_current_power(void) {
 			((uint32_t) rt_vars.ui16_adc_battery_voltage * ADC_BATTERY_VOLTAGE_PER_ADC_STEP_X10000);
 
 	rt_vars.ui16_battery_voltage_filtered_x10 =
-			(((uint32_t) (ui32_battery_voltage_accumulated_x10000 >> BATTERY_VOLTAGE_FILTER_COEFFICIENT)) / 1000);
+			(uint16_t)(((uint32_t) (ui32_battery_voltage_accumulated_x10000 >> BATTERY_VOLTAGE_FILTER_COEFFICIENT))
+						/ ((uint32_t) 1000)
+						* ((uint32_t) rt_vars.ui16_battery_voltage_calibrate_percent_x10)
+						/ ((uint32_t) 1000));
 
 	// low pass filter battery current
 	ui16_battery_current_accumulated_x5 -= ui16_battery_current_accumulated_x5
@@ -442,10 +480,13 @@ void rt_calc_battery_voltage_soc(void) {
 			(uint16_t) ((((uint32_t) rt_vars.ui16_battery_pack_resistance_x1000)
 					* ((uint32_t) rt_vars.ui16_battery_current_filtered_x5))
 					/ ((uint32_t) 500));
-	// now add fluctuate voltage value
-	rt_vars.ui16_battery_voltage_soc_x10 =
+	// now calibrate voltage and add fluctuate voltage value
+	ui16_battery_voltage_soc_x10_temp =
 			rt_vars.ui16_battery_voltage_filtered_x10
 					+ ui16_fluctuate_battery_voltage_x10;
+	// filter
+	rt_vars.ui16_battery_voltage_soc_x10 = filter(ui16_battery_voltage_soc_x10_temp, rt_vars.ui16_battery_voltage_soc_x10, 4);
+	
 }
 
 void rt_calc_wh(void) {
@@ -464,7 +505,7 @@ void rt_calc_wh(void) {
 
 			// avoid zero divisison
 			if (rt_vars.ui32_wh_sum_counter != 0) {
-				ui32_temp = rt_vars.ui32_wh_sum_counter / 36;
+				ui32_temp = rt_vars.ui32_wh_sum_counter / 32; // 36 -10% for calibration
 				ui32_temp = (ui32_temp
 					* (rt_vars.ui32_wh_sum_x5 / rt_vars.ui32_wh_sum_counter))
 					/ 500;
@@ -714,7 +755,7 @@ uint8_t rt_first_time_management(void) {
 
 void rt_calc_battery_soc(void) {
 	uint32_t ui32_temp;
-
+	
 	ui32_temp = rt_vars.ui32_wh_x10 * 100;
 
 	if (rt_vars.ui32_wh_x10_100_percent > 0) {
@@ -722,11 +763,30 @@ void rt_calc_battery_soc(void) {
 	} else {
 		ui32_temp = 0;
 	}
-
 	if (ui32_temp > 100)
-		ui32_temp = 100;
-
-  ui8_g_battery_soc = (uint8_t) (100 - ui32_temp);
+			ui32_temp = 100;
+	
+	ui8_g_battery_soc = (uint8_t) (100 - ui32_temp);
+	
+	if(!ui8_display_ready_counter) {
+		ui8_battery_soc_index =  (uint8_t) ((uint16_t) (100
+			- ((ui_vars.ui16_battery_voltage_soc_x10 - ui_vars.ui16_battery_low_voltage_cut_off_x10) * 100)
+			/ (ui_vars.ui16_battery_voltage_reset_wh_counter_x10 - ui_vars.ui16_battery_low_voltage_cut_off_x10)));
+		
+		if(ui_vars.ui8_battery_soc_percent_calculation == 0) { // Auto
+			if((!ui8_battery_soc_init_flag)
+				&&(ui8_g_battery_soc > ui_vars.ui8_battery_soc_auto_reset)
+				&&((ui8_battery_soc_used[ui8_battery_soc_index] < (ui8_g_battery_soc - ui_vars.ui8_battery_soc_auto_reset))
+				||(ui8_battery_soc_used[ui8_battery_soc_index] > (ui8_g_battery_soc + ui_vars.ui8_battery_soc_auto_reset)))) {
+					ui8_g_configuration_battery_soc_reset = 1;
+			}
+		}
+		else if(ui_vars.ui8_battery_soc_percent_calculation == 2) { // Volts
+			ui8_g_configuration_battery_soc_reset = 1;
+		}
+		
+		ui8_battery_soc_init_flag = 1;
+	}
 }
 
 void rt_processing_stop(void) {
@@ -843,6 +903,8 @@ void copy_rt_to_ui_vars(void) {
 	rt_vars.ui8_target_max_battery_power_div25 = ui_vars.ui8_target_max_battery_power_div25;
 	rt_vars.ui16_battery_low_voltage_cut_off_x10 =
 			ui_vars.ui16_battery_low_voltage_cut_off_x10;
+	rt_vars.ui16_battery_voltage_calibrate_percent_x10 =
+			ui_vars.ui16_battery_voltage_calibrate_percent_x10;
 	rt_vars.ui16_wheel_perimeter = ui_vars.ui16_wheel_perimeter;
 	rt_vars.ui8_wheel_max_speed = (uint8_t) (ui_vars.ui16_wheel_max_speed_x10 / 10);
 	rt_vars.ui8_motor_type = ui_vars.ui8_motor_type;
@@ -851,6 +913,8 @@ void copy_rt_to_ui_vars(void) {
 			ui_vars.ui8_motor_assistance_startup_without_pedal_rotation;
 	rt_vars.ui8_optional_ADC_function =	ui_vars.ui8_optional_ADC_function;
 	rt_vars.ui8_screen_temperature = ui_vars.ui8_screen_temperature;
+	rt_vars.ui8_battery_soc_percent_calculation = ui_vars.ui8_battery_soc_percent_calculation;
+	rt_vars.ui8_battery_soc_auto_reset = ui_vars.ui8_battery_soc_auto_reset;
 	//rt_vars.ui8_startup_motor_power_boost_always =
 	//		ui_vars.ui8_startup_motor_power_boost_always;
 	//rt_vars.ui8_startup_motor_power_boost_limit_power =
@@ -864,6 +928,7 @@ void copy_rt_to_ui_vars(void) {
 	//		ui_vars.ui8_startup_motor_power_boost_fade_time;
 	rt_vars.ui8_startup_motor_power_boost_feature_enabled =
 			ui_vars.ui8_startup_motor_power_boost_feature_enabled;
+	rt_vars.ui8_startup_boost_at_zero = ui_vars.ui8_startup_boost_at_zero;
 	rt_vars.ui8_motor_temperature_min_value_to_limit =
 			ui_vars.ui8_motor_temperature_min_value_to_limit;
 	rt_vars.ui8_motor_temperature_max_value_to_limit =
@@ -897,15 +962,45 @@ void copy_rt_to_ui_vars(void) {
   rt_vars.ui8_motor_acceleration_adjustment = ui_vars.ui8_motor_acceleration_adjustment;
   rt_vars.ui8_motor_deceleration_adjustment = ui_vars.ui8_motor_deceleration_adjustment;
   rt_vars.ui8_pedal_torque_per_10_bit_ADC_step_x100 = ui_vars.ui8_pedal_torque_per_10_bit_ADC_step_x100;
+  rt_vars.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100 = ui_vars.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100;
   rt_vars.ui8_lights_configuration = ui_vars.ui8_lights_configuration;
   rt_vars.ui16_startup_boost_torque_factor = ui_vars.ui16_startup_boost_torque_factor;
   rt_vars.ui8_startup_boost_cadence_step = ui_vars.ui8_startup_boost_cadence_step;
+
+  //rt_vars.ui8_adc_pedal_torque_offset_adj = ui_vars.ui8_adc_pedal_torque_offset_adj;
+  rt_vars.ui8_adc_pedal_torque_range_adj = ui_vars.ui8_adc_pedal_torque_range_adj;
+  rt_vars.ui8_adc_pedal_torque_angle_adj_index = ui_vars.ui8_adc_pedal_torque_angle_adj_index;
+  
   rt_vars.ui16_adc_pedal_torque_offset = ui_vars.ui16_adc_pedal_torque_offset;
   rt_vars.ui16_adc_pedal_torque_max = ui_vars.ui16_adc_pedal_torque_max;
+  ui16_adc_pedal_torque_range = (rt_vars.ui16_adc_pedal_torque_max - rt_vars.ui16_adc_pedal_torque_offset);
+  
+  //rt_vars.ui8_config_shortcut_key_enabled = ui_vars.ui8_config_shortcut_key_enabled;	
   rt_vars.ui8_weight_on_pedal = ui_vars.ui8_weight_on_pedal;
-  //rt_vars.ui8_config_shortcut_key_enabled = ui_vars.ui8_config_shortcut_key_enabled;
-
-  rt_vars.ui16_adc_pedal_torque_calibration = ui_vars.ui16_adc_pedal_torque_calibration;
+  rt_vars.ui16_adc_pedal_torque_with_weight = ui_vars.ui16_adc_pedal_torque_with_weight;
+	
+  if(rt_vars.ui8_torque_sensor_calibration_feature_enabled) {
+	// pedal torque adc step advanced x100 with calibration enabled
+	rt_vars.ui8_pedal_torque_ADC_step_calc_x100 = (((rt_vars.ui8_weight_on_pedal * 1670)
+		/ (((rt_vars.ui16_adc_pedal_torque_with_weight - rt_vars.ui16_adc_pedal_torque_offset)
+		* ADC_TORQUE_SENSOR_RANGE_TARGET) / ui16_adc_pedal_torque_range)) + 5) / 10;
+	
+	ui8_adc_torque_calibration_offset = (uint8_t)((uint16_t)(((ADC_TORQUE_SENSOR_CALIBRATION_OFFSET
+		* ui16_adc_pedal_torque_range) / ADC_TORQUE_SENSOR_RANGE_TARGET) + 1));
+	ui8_adc_torque_middle_offset_adj = (uint8_t)((uint16_t)(((ADC_TORQUE_SENSOR_MIDDLE_OFFSET_ADJ
+		* ui16_adc_pedal_torque_range) / ADC_TORQUE_SENSOR_RANGE_TARGET) + 1));
+	rt_vars.ui8_adc_pedal_torque_offset_adj = (uint8_t)((uint16_t)(((ui_vars.ui8_adc_pedal_torque_offset_adj
+		* ui16_adc_pedal_torque_range) / ADC_TORQUE_SENSOR_RANGE_TARGET) + 1));
+  }
+  else  {
+	// pedal torque adc step x100 to calculate human power with calibration disabled
+	rt_vars.ui8_pedal_torque_ADC_step_calc_x100 = ((rt_vars.ui8_weight_on_pedal * 1670)
+		/ (rt_vars.ui16_adc_pedal_torque_with_weight - rt_vars.ui16_adc_pedal_torque_offset) + 5) / 10;
+	
+	ui8_adc_torque_calibration_offset = ADC_TORQUE_SENSOR_CALIBRATION_OFFSET;
+	ui8_adc_torque_middle_offset_adj = ADC_TORQUE_SENSOR_MIDDLE_OFFSET_ADJ;
+	rt_vars.ui8_adc_pedal_torque_offset_adj = ui_vars.ui8_adc_pedal_torque_offset_adj;
+  }
 }
 
 /// must be called from main() idle loop
@@ -1034,7 +1129,12 @@ void communications(void) {
                 (((uint32_t) p_rx_buffer[22]) << 8) | (((uint32_t) p_rx_buffer[23]) << 16);
             rt_vars.ui32_wheel_speed_sensor_tick_counter = ui32_wheel_speed_sensor_tick_temp;
 			
-			rt_vars.ui16_pedal_power_x10 = (rt_vars.ui16_adc_pedal_torque_delta * rt_vars.ui8_pedal_torque_ADC_step_calc_x100 * rt_vars.ui8_pedal_cadence) / 96;
+			if(rt_vars.ui8_torque_sensor_calibration_feature_enabled) {
+				rt_vars.ui16_pedal_power_x10 = (rt_vars.ui16_adc_pedal_torque_delta * ui8_pedal_torque_ADC_step_adv_calc_x100 * rt_vars.ui8_pedal_cadence) / 96;
+			}
+			else {
+				rt_vars.ui16_pedal_power_x10 = (rt_vars.ui16_adc_pedal_torque_delta * rt_vars.ui8_pedal_torque_per_10_bit_ADC_step_x100 * rt_vars.ui8_pedal_cadence) / 96;
+			}
 			
 			rt_vars.ui16_adc_pedal_torque_delta_boost = ((uint16_t) p_rx_buffer[24]) | ((uint16_t) p_rx_buffer[25] << 8);
 			
@@ -1168,7 +1268,7 @@ static void motor_init(void) {
         // check timeout
         ui16_motor_init_command_error_cnt--;
         if (ui16_motor_init_command_error_cnt == 0) {
-          fieldPrintf(&bootStatus2, _S("Error brakes", "e: brakes"));
+          fieldPrintf(&bootStatus2, _S("Error brakes or comms", "e: brakes"));
           g_motor_init_state = MOTOR_INIT_GET_MOTOR_ALIVE;
         }
         break;
@@ -1190,8 +1290,9 @@ static void motor_init(void) {
 
       case MOTOR_INIT_GOT_MOTOR_FIRMWARE_VERSION:
         if (g_tsdz2_firmware_version.major == atoi(TSDZ2_FIRMWARE_MAJOR) &&
-            g_tsdz2_firmware_version.minor == atoi(TSDZ2_FIRMWARE_MINOR)) {
-
+            g_tsdz2_firmware_version.minor == atoi(TSDZ2_FIRMWARE_MINOR) &&
+			g_tsdz2_firmware_version.patch == atoi(TSDZ2_FIRMWARE_PATCH)) {
+			
             g_motor_init_state = MOTOR_INIT_SET_CONFIGURATIONS;
             // not break here to follow for next case
         } else {
@@ -1257,4 +1358,24 @@ static void motor_init(void) {
         }
     }
   }
+}
+
+// filter
+uint16_t filter(uint16_t ui16_new_value, uint16_t ui16_old_value, uint8_t ui8_alpha) {
+    if (ui8_alpha < 11) {
+        uint32_t ui32_temp_new = (uint32_t) ui16_new_value * (uint32_t)(10U - ui8_alpha);
+		uint32_t ui32_temp_old = (uint32_t) ui16_old_value * (uint32_t) ui8_alpha;
+        uint16_t ui16_filtered_value = (uint16_t)((ui32_temp_new + ui32_temp_old + 5U) / 10U);
+
+        if (ui16_filtered_value == ui16_old_value) {
+            if (ui16_filtered_value < ui16_new_value)
+				ui16_filtered_value++;
+			else if (ui16_filtered_value > ui16_new_value)
+				ui16_filtered_value--;
+        }
+
+        return ui16_filtered_value;
+    } else {
+        return 0;
+    }
 }
