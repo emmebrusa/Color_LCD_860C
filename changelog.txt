@@ -79,6 +79,7 @@ Display Menus (new items)
 	ADC torque boost
 
 System msg:
+Keep pedals and brakes free
 Wait TSDZ2
 SIMULATING TSDZ2!
 Error brakes or comms

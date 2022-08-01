@@ -34,7 +34,7 @@
 #define CRUISE_THRESHOLD_SPEED_X10				90  // 90 -> 9.0 km/h
 static uint8_t ui8_set_riding_mode = 0; // 0=disabled, 1=enabled
 static uint8_t ui8_configuration_flag = 0;
-volatile uint8_t ui8_display_ready_counter = 70;
+volatile uint8_t ui8_display_ready_counter = 80;
 volatile uint8_t ui8_battery_soc_used[100] = { 1, 1, 2, 3, 4, 5, 6, 8, 10, 12, 13, 15, 17, 19, 21, 23, 25, 26, 28,
 	29, 31, 33, 34, 36, 38, 39, 41, 42, 44, 46, 47, 49, 51, 52, 53, 54, 55, 57, 58, 59, 61, 62, 63, 65, 66,	67,
 	69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 85, 86, 87, 87, 88, 88, 89, 89, 90, 90,
@@ -320,7 +320,7 @@ Field bootHeading = FIELD_DRAWTEXT_RO(_S("OpenSource EBike", "OS-EBike")),
 #endif
 
    bootVersion = FIELD_DRAWTEXT_RO(VERSION_STRING),
-   bootStatus1 = FIELD_DRAWTEXT_RO(_S("Keep pedals free and wait", "free pedal")),
+   bootStatus1 = FIELD_DRAWTEXT_RO(_S("Keep pedals and brakes free", "free pedal")),
    bootStatus2 = FIELD_DRAWTEXT_RW(.msg = "");
 
 static void bootScreenOnPreUpdate() {
@@ -440,6 +440,7 @@ bool anyscreen_onpress(buttons_events_t events) {
     ui_vars.ui8_lights = !ui_vars.ui8_lights;
     set_lcd_backlight();
 	
+	// set startup assist
 	if ((ui_vars.ui8_startup_assist_feature_enabled)&&(ui8_startup_assist_maxtime))
 		ui_vars.ui8_startup_assist = 1;
 	
@@ -1193,13 +1194,11 @@ void warnings(void) {
 		setWarning(ColorNormal, "BRAKE");
 		return;
 	}
-
-	if((ui_vars.ui8_startup_assist)&&(ui_vars.ui8_assist_level)) {
+	else if((ui_vars.ui8_startup_assist)&&(ui_vars.ui8_assist_level)) {
 		setWarning(ColorNormal, "STARTUP");
 		return;
 	}
-	
-	if((ui_vars.ui8_walk_assist)&&(ui_vars.ui8_assist_level)) {
+	else if((ui_vars.ui8_walk_assist)&&(ui_vars.ui8_assist_level)) {
 		if(ui_vars.ui16_wheel_speed_x10 <= WALK_ASSIST_THRESHOLD_SPEED_X10)
 			setWarning(ColorNormal, "WALK");
 		else if(ui_vars.ui16_wheel_speed_x10 >= CRUISE_THRESHOLD_SPEED_X10)
@@ -1209,8 +1208,7 @@ void warnings(void) {
 		
 		return;
 	}
-	
-	if (ui_vars.ui8_lights) {
+	else if (ui_vars.ui8_lights) {
 		setWarning(ColorNormal, "LIGHT");
 		return;
 	}
@@ -1621,7 +1619,10 @@ void motorCurrent(void) {
 void onSetConfigurationWheelOdometer(uint32_t v) {
 
   // let's update the main variable used for calculations of odometer
-  rt_vars.ui32_odometer_x10 = v;
+  if (screenConvertMiles)
+	rt_vars.ui32_odometer_x10 = (v * 161) / 100;
+  else
+	rt_vars.ui32_odometer_x10 = v;
 }
 
 void batteryPower(void) {

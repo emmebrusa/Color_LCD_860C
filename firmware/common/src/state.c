@@ -229,16 +229,16 @@ void rt_send_tx_package(frame_type_t type) {
 		if (rt_vars.ui8_assist_level)
 			ui8_assist_level_state = 1;
 		
-		uint8_t ui8_startup_assist_state = 0;
+		uint8_t ui8_startup_assist_status = 0;
 		if ((rt_vars.ui8_assist_level)&&(rt_vars.ui8_startup_assist_feature_enabled))
-			ui8_startup_assist_state = rt_vars.ui8_startup_assist; 
+			ui8_startup_assist_status = rt_vars.ui8_startup_assist; 
 		
 		// lights state & assist state
 		ui8_usart1_tx_buffer[5] = (rt_vars.ui8_lights & 1) |
 			((ui8_walk_assist_state & 1) << 1) |
 			((ui8_assist_level_state & 1) << 2) |
 			((ui8_cruise_state & 1) << 3) |
-			((ui8_startup_assist_state & 1) << 4);
+			((ui8_startup_assist_status & 1) << 4);
 			// bit free for future use
 	
 		// battery power limit
@@ -333,7 +333,9 @@ void rt_send_tx_package(frame_type_t type) {
 		ui8_usart1_tx_buffer[53] = ui8_adc_torque_calibration_offset;
 		ui8_usart1_tx_buffer[54] = ui8_adc_torque_middle_offset_adj;
 		
-		// torque sensor offset & max for calibration
+		// torque sensor offset set, for check the offset calibration
+		ui8_usart1_tx_buffer[76] = (uint8_t) (rt_vars.ui16_adc_pedal_torque_offset  & 0xff);
+		ui8_usart1_tx_buffer[77] = (uint8_t) (rt_vars.ui16_adc_pedal_torque_offset >> 8);
 		//ui16_adc_pedal_torque_range = (rt_vars.ui16_adc_pedal_torque_max - rt_vars.ui16_adc_pedal_torque_offset);
 		ui8_usart1_tx_buffer[78] = (uint8_t) (ui16_adc_pedal_torque_range  & 0xff);
 		ui8_usart1_tx_buffer[79] = (uint8_t) (ui16_adc_pedal_torque_range >> 8);
@@ -376,7 +378,7 @@ void rt_send_tx_package(frame_type_t type) {
 			/ ((ui16_adc_pedal_torque_delta_with_weight * ui16_adc_pedal_torque_range_target_max)
 			/ (ui16_adc_pedal_torque_range_target_max - (((ui16_adc_pedal_torque_range_target_max - ui16_adc_pedal_torque_delta_with_weight) * 10)
 			/ ui8_adc_pedal_torque_angle_adj_array[rt_vars.ui8_adc_pedal_torque_angle_adj_index])))
-			* rt_vars.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100) / PEDAL_TORQUE_PER_10_BIT_ADC_STEP_BASE_X100));
+			* rt_vars.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100) / PEDAL_TORQUE_PER_10_BIT_ADC_STEP_BASE_X100)) + 1;
 
 		crc_len = 86;
 		ui8_usart1_tx_buffer[1] = crc_len;
@@ -981,9 +983,9 @@ void copy_rt_to_ui_vars(void) {
 	
   if(rt_vars.ui8_torque_sensor_calibration_feature_enabled) {
 	// pedal torque adc step advanced x100 with calibration enabled
-	rt_vars.ui8_pedal_torque_ADC_step_calc_x100 = (((rt_vars.ui8_weight_on_pedal * 1670)
+	rt_vars.ui8_pedal_torque_ADC_step_calc_x100 = (uint8_t)((uint16_t)(((rt_vars.ui8_weight_on_pedal * 1670)
 		/ (((rt_vars.ui16_adc_pedal_torque_with_weight - rt_vars.ui16_adc_pedal_torque_offset)
-		* ADC_TORQUE_SENSOR_RANGE_TARGET) / ui16_adc_pedal_torque_range)) + 5) / 10;
+		* ADC_TORQUE_SENSOR_RANGE_TARGET) / ui16_adc_pedal_torque_range)) + 5) / 10);
 	
 	ui8_adc_torque_calibration_offset = (uint8_t)((uint16_t)(((ADC_TORQUE_SENSOR_CALIBRATION_OFFSET
 		* ui16_adc_pedal_torque_range) / ADC_TORQUE_SENSOR_RANGE_TARGET) + 1));
@@ -994,8 +996,8 @@ void copy_rt_to_ui_vars(void) {
   }
   else  {
 	// pedal torque adc step x100 to calculate human power with calibration disabled
-	rt_vars.ui8_pedal_torque_ADC_step_calc_x100 = ((rt_vars.ui8_weight_on_pedal * 1670)
-		/ (rt_vars.ui16_adc_pedal_torque_with_weight - rt_vars.ui16_adc_pedal_torque_offset) + 5) / 10;
+	rt_vars.ui8_pedal_torque_ADC_step_calc_x100 = (uint8_t)((uint16_t)((rt_vars.ui8_weight_on_pedal * 1670)
+		/ (rt_vars.ui16_adc_pedal_torque_with_weight - rt_vars.ui16_adc_pedal_torque_offset) + 5) / 10);
 	
 	ui8_adc_torque_calibration_offset = ADC_TORQUE_SENSOR_CALIBRATION_OFFSET;
 	ui8_adc_torque_middle_offset_adj = ADC_TORQUE_SENSOR_MIDDLE_OFFSET_ADJ;
@@ -1032,6 +1034,7 @@ void automatic_power_off_management(void) {
 void communications(void) {
   frame_type_t ui8_frame;
   uint8_t process_frame = 0;
+  uint8_t ui8_temp;
   uint16_t ui16_temp;
 
   const uint8_t *p_rx_buffer = uart_get_rx_buffer_rdy();
@@ -1078,7 +1081,7 @@ void communications(void) {
             ui16_temp = ((uint16_t) p_rx_buffer[6]) | (((uint16_t) p_rx_buffer[7] << 8));
             rt_vars.ui16_wheel_speed_x10 = ui16_temp & 0x7ff; // 0x7ff = 204.7km/h as the other bits are used for other things
 
-            uint8_t ui8_temp = p_rx_buffer[8];
+            ui8_temp = p_rx_buffer[8];
             rt_vars.ui8_braking = ui8_temp & 1;
             rt_vars.ui8_motor_hall_sensors = (ui8_temp >> 1) & 7;
             //rt_vars.available = (ui8_temp >> 4) & 1;
