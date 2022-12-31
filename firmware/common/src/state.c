@@ -298,14 +298,22 @@ void rt_send_tx_package(frame_type_t type) {
 		// battery max current
 		ui8_usart1_tx_buffer[7] = rt_vars.ui8_battery_max_current;
 		
+		uint8_t ui8_throttle_legal = 0;
+		if ((rt_vars.ui8_street_mode_enabled)&&(rt_vars.ui8_street_mode_throttle_enabled == LEGAL))
+			ui8_throttle_legal = 1;
+		uint8_t ui8_cruise_legal = 0;
+		if ((rt_vars.ui8_street_mode_enabled)&&(rt_vars.ui8_street_mode_cruise_enabled == LEGAL))
+			ui8_cruise_legal = 1;
+		
 		// feature enabled
 		ui8_usart1_tx_buffer[8] = (rt_vars.ui8_startup_motor_power_boost_feature_enabled & 1)|
 		  ((rt_vars.ui8_startup_boost_at_zero & 1) << 1) |
-		  // bit free for future use
+		  ((ui8_throttle_legal & 1) << 2) |
           ((rt_vars.ui8_torque_sensor_calibration_feature_enabled & 1) << 3) |
           ((rt_vars.ui8_assist_whit_error_enabled & 1) << 4) |
           ((rt_vars.ui8_motor_assistance_startup_without_pedal_rotation & 1) << 5) |
-          ((rt_vars.ui8_motor_type & 1) << 6);
+          ((rt_vars.ui8_motor_type & 1) << 6) |
+		  ((ui8_cruise_legal & 1) << 7);
 
 		// free for future use
 		ui8_usart1_tx_buffer[9] = 0;
@@ -512,9 +520,15 @@ void rt_calc_wh(void) {
 					* (rt_vars.ui32_wh_sum_x5 / rt_vars.ui32_wh_sum_counter))
 					/ 500;
 			}
-
+			
 			rt_vars.ui32_wh_x10 = rt_vars.ui32_wh_x10_offset + ui32_temp;
 #ifndef SW102
+			// calc total Wh & charge cycles
+			if(rt_vars.ui32_wh_x10_100_percent) {
+				ui_vars.ui32_wh_x10_total = ui_vars.ui32_wh_x10_total_offset + ui32_temp;
+				rt_vars.ui16_battery_charge_cycles_x10 = (uint16_t)((uint32_t)(ui_vars.ui32_wh_x10_total / (rt_vars.ui32_wh_x10_100_percent / 10)));
+			}
+			
 			// calc trip A and B Wh
 			ui32_wh_x10_since_power_on = ui32_temp;
 			ui_vars.ui32_wh_x10_trip_a = rt_vars.ui32_wh_x10_trip_a_offset + ui32_temp - ui32_wh_x10_reset_trip_a;
@@ -534,8 +548,9 @@ void reset_wh(void) {
 }
 
 static void rt_calc_odometer(void) {
-	static uint8_t ui8_1s_timer_counter;
+	static uint8_t ui8_1s_timer_counter = 0;
 	static uint32_t ui32_remainder = 0;
+	static uint8_t ui8_01km = 0;
 	uint8_t ui8_01km_flag = 0;
 
 	// calc at 1s rate
@@ -554,10 +569,20 @@ static void rt_calc_odometer(void) {
 			rt_vars.ui32_odometer_x10 += 1;
 			ui8_01km_flag = 1;
 			ui32_remainder = ui32_temp - 100000;
-
+			
 			// reset the always incrementing value (up to motor controller power reset) by setting the offset to current value
 			rt_vars.ui32_wheel_speed_sensor_tick_counter_offset =
 					rt_vars.ui32_wheel_speed_sensor_tick_counter;
+			#ifndef SW102
+			// service a distance
+			if((ui_vars.ui8_service_a_distance_enable)&&(rt_vars.ui16_service_a_distance)) {
+				ui8_01km += 1;
+				if(ui8_01km >= 10) {
+					rt_vars.ui16_service_a_distance -= 1;
+					ui8_01km = 0;
+				}
+			}
+			#endif
 		}
 	}
 
@@ -643,6 +668,10 @@ static void rt_calc_trips(void) {
       rt_vars.ui32_trip_b_time += 1;
       
 #ifndef SW102
+	  if((ui_vars.ui8_service_b_hours_enable)&&(rt_vars.ui16_service_b_hours)) {
+		rt_vars.ui16_service_b_time += 1;
+	  }
+	  
       rt_vars.ui32_trip_a_last_update_time = RTC_GetCounter();
       rt_vars.ui32_trip_b_last_update_time = RTC_GetCounter();
 #endif
@@ -655,7 +684,7 @@ static void rt_calc_trips(void) {
   uint32_t current_time = RTC_GetCounter();
 
   if(ui_vars.ui8_trip_a_auto_reset && ui_vars.ui16_trip_a_auto_reset_hours &&
-    (current_time - rt_vars.ui32_trip_a_last_update_time >= ui_vars.ui16_trip_a_auto_reset_hours * 3600)) {
+    ((current_time - rt_vars.ui32_trip_a_last_update_time) >= (ui_vars.ui16_trip_a_auto_reset_hours * 3600))) {
 		rt_vars.ui32_trip_a_last_update_time = current_time;
 		rt_vars.ui32_trip_a_distance_x1000 = 0;
 		rt_vars.ui32_trip_a_time = 0;
@@ -667,7 +696,7 @@ static void rt_calc_trips(void) {
   }
 
   if(ui_vars.ui8_trip_b_auto_reset && ui_vars.ui16_trip_b_auto_reset_hours &&
-    (current_time - rt_vars.ui32_trip_b_last_update_time >= ui_vars.ui16_trip_b_auto_reset_hours * 3600)) {
+    ((current_time - rt_vars.ui32_trip_b_last_update_time) >= (ui_vars.ui16_trip_b_auto_reset_hours * 3600))) {
 		rt_vars.ui32_trip_b_last_update_time = current_time;
 		rt_vars.ui32_trip_b_distance_x1000 = 0;
 		rt_vars.ui32_trip_b_time = 0;
@@ -677,6 +706,13 @@ static void rt_calc_trips(void) {
 		ui_vars.ui32_wh_x10_trip_b_offset = 0;
 		ui32_wh_x10_reset_trip_b = ui32_wh_x10_since_power_on;
   }
+  
+  // service b hours
+  if((ui_vars.ui8_service_b_hours_enable)&&(rt_vars.ui16_service_b_hours)
+	&&(rt_vars.ui16_service_b_time >= 3600)) {
+	rt_vars.ui16_service_b_hours -= 1;
+	rt_vars.ui16_service_b_time = 0;
+  } 
 #endif
 
 }
@@ -734,7 +770,8 @@ uint8_t rt_first_time_management(void) {
             * 1000)) {
 		ui_vars.ui32_wh_x10_offset = 0;
 
-#ifndef SW102		
+#ifndef SW102
+		
 		// reset trip A at reset Wh
 		if((ui_vars.ui8_trip_a_auto_reset) && (!ui_vars.ui16_trip_a_auto_reset_hours)) {
 			ui8_g_configuration_trip_a_reset = 1;
@@ -770,7 +807,7 @@ void rt_calc_battery_soc(void) {
 	
 	ui8_g_battery_soc = (uint8_t) (100 - ui32_temp);
 	
-	if(!ui8_display_ready_counter) {
+	if(!ui8_voltage_ready_counter) {
 		ui8_battery_soc_index =  (uint8_t) ((uint16_t) (100
 			- ((ui_vars.ui16_battery_voltage_soc_x10 - ui_vars.ui16_battery_low_voltage_cut_off_x10) * 100)
 			/ (ui_vars.ui16_battery_voltage_reset_wh_counter_x10 - ui_vars.ui16_battery_low_voltage_cut_off_x10)));
@@ -845,6 +882,11 @@ void copy_rt_to_ui_vars(void) {
 	ui_vars.ui32_wh_sum_x5 = rt_vars.ui32_wh_sum_x5;
 	ui_vars.ui32_wh_sum_counter = rt_vars.ui32_wh_sum_counter;
 	ui_vars.ui32_wh_x10 = rt_vars.ui32_wh_x10;
+	
+#ifndef SW102
+	//ui_vars.ui32_wh_x10_total = rt_vars.ui32_wh_x10_total;
+	ui_vars.ui16_battery_charge_cycles_x10 = rt_vars.ui16_battery_charge_cycles_x10;
+#endif
 
 	ui_vars.ui8_braking = rt_vars.ui8_braking;
 	ui_vars.ui8_foc_angle = (((uint16_t) rt_vars.ui8_foc_angle) * 14) / 10; // each units is equal to 1.4 degrees ((360 degrees / 256) = 1.4)
@@ -877,6 +919,12 @@ void copy_rt_to_ui_vars(void) {
 	rt_vars.ui32_wh_x10_offset = ui_vars.ui32_wh_x10_offset;
 
 #ifndef SW102
+	ui_vars.ui16_service_a_distance = rt_vars.ui16_service_a_distance;
+	ui_vars.ui16_service_b_hours = rt_vars.ui16_service_b_hours;
+	ui_vars.ui16_service_b_time = rt_vars.ui16_service_b_time;
+	
+	//rt_vars.ui32_wh_x10_total_offset = ui_vars.ui32_wh_x10_total_offset;
+	
 	rt_vars.ui32_wh_x10_trip_a_offset = ui_vars.ui32_wh_x10_trip_a_offset;
 	rt_vars.ui32_wh_x10_trip_b_offset = ui_vars.ui32_wh_x10_trip_b_offset;
 #endif
@@ -915,6 +963,7 @@ void copy_rt_to_ui_vars(void) {
 			ui_vars.ui8_motor_assistance_startup_without_pedal_rotation;
 	rt_vars.ui8_optional_ADC_function =	ui_vars.ui8_optional_ADC_function;
 	rt_vars.ui8_screen_temperature = ui_vars.ui8_screen_temperature;
+	rt_vars.ui8_temperature_sensor_type = ui_vars.ui8_temperature_sensor_type;
 	rt_vars.ui8_battery_soc_percent_calculation = ui_vars.ui8_battery_soc_percent_calculation;
 	rt_vars.ui8_battery_soc_auto_reset = ui_vars.ui8_battery_soc_auto_reset;
 	//rt_vars.ui8_startup_motor_power_boost_always =
@@ -931,6 +980,8 @@ void copy_rt_to_ui_vars(void) {
 	rt_vars.ui8_startup_motor_power_boost_feature_enabled =
 			ui_vars.ui8_startup_motor_power_boost_feature_enabled;
 	rt_vars.ui8_startup_boost_at_zero = ui_vars.ui8_startup_boost_at_zero;
+	ui_vars.ui8_street_mode_throttle_legal = (ui_vars.ui8_street_mode_throttle_enabled & 2) > 1;
+	ui_vars.ui8_street_mode_cruise_legal = (ui_vars.ui8_street_mode_cruise_enabled & 2) > 1;
 	rt_vars.ui8_motor_temperature_min_value_to_limit =
 			ui_vars.ui8_motor_temperature_min_value_to_limit;
 	rt_vars.ui8_motor_temperature_max_value_to_limit =
@@ -1090,6 +1141,14 @@ void communications(void) {
 
             if (rt_vars.ui8_optional_ADC_function == TEMPERATURE_CONTROL) {
 				rt_vars.ui8_motor_temperature = p_rx_buffer[10];
+				if (rt_vars.ui8_temperature_sensor_type == TMP36) {
+					if (rt_vars.ui8_motor_temperature > 50) {
+						rt_vars.ui8_motor_temperature = rt_vars.ui8_motor_temperature - 50;
+					}
+					else {
+						rt_vars.ui8_motor_temperature = 0;
+					}
+				}
 				rt_vars.ui8_throttle = 0;
             }
 			else if (rt_vars.ui8_optional_ADC_function == THROTTLE_CONTROL) {

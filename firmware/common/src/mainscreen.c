@@ -34,7 +34,8 @@
 #define CRUISE_THRESHOLD_SPEED_X10				90  // 90 -> 9.0 km/h
 static uint8_t ui8_set_riding_mode = 0; // 0=disabled, 1=enabled
 static uint8_t ui8_configuration_flag = 0;
-volatile uint8_t ui8_display_ready_counter = 80;
+volatile uint8_t ui8_display_ready_counter = 60;
+volatile uint8_t ui8_voltage_ready_counter = 120;
 volatile uint8_t ui8_battery_soc_used[100] = { 1, 1, 2, 3, 4, 5, 6, 8, 10, 12, 13, 15, 17, 19, 21, 23, 25, 26, 28,
 	29, 31, 33, 34, 36, 38, 39, 41, 42, 44, 46, 47, 49, 51, 52, 53, 54, 55, 57, 58, 59, 61, 62, 63, 65, 66,	67,
 	69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 85, 86, 87, 87, 88, 88, 89, 89, 90, 90,
@@ -43,7 +44,11 @@ volatile uint8_t ui8_battery_soc_used[100] = { 1, 1, 2, 3, 4, 5, 6, 8, 10, 12, 1
 volatile uint8_t ui8_battery_soc_index = 0;
 
 #ifndef SW102
-// for calculate Wh trip A and B
+// service warning
+uint8_t ui8_service_a_distance_warning = 0;
+uint8_t ui8_service_b_hours_warning = 0;
+
+// calculate Wh trip A and B
 uint32_t ui32_wh_x10_reset_trip_a = 0;
 uint32_t ui32_wh_x10_reset_trip_b = 0;
 uint32_t ui32_wh_x10_since_power_on = 0;
@@ -102,6 +107,9 @@ void motorCurrent(void);
 void batteryPower(void);
 void pedalPower(void);
 void thresholds(void);
+#ifndef SW102
+void ServiceWarning(void);
+#endif
 
 /// set to true if this boot was caused because we had a watchdog failure, used to show user the problem in the fault line
 bool wd_failure_detected;
@@ -824,6 +832,7 @@ void screen_clock(void) {
     streetMode();
 #ifndef SW102
     thresholds();
+	ServiceWarning();
 #endif
     screenUpdate();
   }
@@ -1128,10 +1137,29 @@ void warnings(void) {
       return;
   }
   
-  // display riding mode
+  // voltage ready counter
+  if(ui8_voltage_ready_counter)
+	  ui8_voltage_ready_counter--;
+  
+  // display ready counter
   if(ui8_display_ready_counter)
 	  ui8_display_ready_counter--;
-  
+
+#ifndef SW102
+	// service warning in yellow
+	if(ui8_display_ready_counter) {
+		if(ui8_service_a_distance_warning) {
+			setWarning(ColorWarning, "Service A");
+			return;
+		}
+		else if(ui8_service_b_hours_warning) {
+			setWarning(ColorWarning, "Service B");
+			return;
+		}
+	}
+#endif
+
+  // display riding mode
   if(((ui8_set_riding_mode)&&(!ui_vars.ui8_assist_level))||
     (ui8_display_ready_counter)) {
 	  switch (ui_vars.ui8_riding_mode) {
@@ -1278,7 +1306,7 @@ void walk_assist_state(void) {
   if (ui_vars.ui8_walk_assist_feature_enabled) {
     // if down button is still pressed
     if (ui_vars.ui8_walk_assist && buttons_get_down_state()) {
-      ui8_walk_assist_timeout = 2; // 0.2 seconds
+      ui8_walk_assist_timeout = 4; // 0.4 seconds
     } else if (buttons_get_down_state() == 0 && --ui8_walk_assist_timeout == 0) {
       ui_vars.ui8_walk_assist = 0;
     }
@@ -1296,7 +1324,7 @@ void startup_assist_state(void) {
 	
     // if up button is still pressed
     if (ui_vars.ui8_startup_assist && buttons_get_up_state()) {
-      ui8_startup_assist_timeout = 2; // 0.2 seconds
+      ui8_startup_assist_timeout = 4; // 0.4 seconds
 	  
 	  if (--ui8_startup_assist_maxtime == 0)
 		  ui_vars.ui8_startup_assist = 0;
@@ -1502,6 +1530,13 @@ void BatterySOCReset(void) {
 			ui_vars.ui32_wh_x10_offset = (ui_vars.ui32_wh_x10_100_percent
 				* ui8_battery_soc_used[ui8_battery_soc_index]) / 100;
 #ifndef SW102
+			// reset total Wh and charge cycles if battery capacity = 0
+			if(!rt_vars.ui32_wh_x10_100_percent) {
+				ui_vars.ui32_wh_x10_total_offset = 0;
+				rt_vars.ui16_battery_charge_cycles_x10 = 0;
+			}
+			
+			// reset trip Wh
 			ui_vars.ui32_wh_x10_trip_a_offset = ui_vars.ui32_wh_x10_trip_a;
 			ui32_wh_x10_reset_trip_a = 0;
 			
@@ -1522,6 +1557,26 @@ void SetDefaultWeight(void) {
 			+ ((ui_vars.ui16_adc_pedal_torque_max - ui_vars.ui16_adc_pedal_torque_offset) * PERCENT_TORQUE_SENSOR_RANGE_WITH_WEIGHT) / 100;
 	}
 }
+
+#ifndef SW102
+void ServiceWarning(void) {
+	// service a distance
+	if((ui_vars.ui8_service_a_distance_enable)&&(!rt_vars.ui16_service_a_distance)) {
+		ui8_service_a_distance_warning = 1;
+	}
+	else {
+		ui8_service_a_distance_warning = 0;
+	}
+	
+	// service b hours
+	if((ui_vars.ui8_service_b_hours_enable)&&(!rt_vars.ui16_service_b_hours)) {
+		ui8_service_b_hours_warning = 1;
+	}
+	else {
+		ui8_service_b_hours_warning = 0;
+	}
+}
+#endif
 
 void DisplayResetBluetoothPeers(void) {
 #ifdef SW102
@@ -1624,7 +1679,18 @@ void onSetConfigurationWheelOdometer(uint32_t v) {
   else
 	rt_vars.ui32_odometer_x10 = v;
 }
+#ifndef SW102
+void onSetConfigurationServiceDistance(uint16_t v) {
+  if (screenConvertMiles)
+	rt_vars.ui16_service_a_distance = (v * 161) / 100;
+  else
+	rt_vars.ui16_service_a_distance = v;
+}
 
+void onSetConfigurationServiceHours(uint16_t v) {
+	rt_vars.ui16_service_b_hours = v;
+}
+#endif
 void batteryPower(void) {
 
   ui16_m_battery_power_filtered = ui_vars.ui16_battery_power;

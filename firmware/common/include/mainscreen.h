@@ -5,6 +5,7 @@
 extern volatile uint8_t ui8_battery_soc_used[100];
 extern volatile uint8_t ui8_battery_soc_index;
 extern volatile uint8_t ui8_display_ready_counter;
+extern volatile uint8_t ui8_voltage_ready_counter;
 
 #ifndef SW102
 // for calculate Wh trip A and B
@@ -103,6 +104,10 @@ void onSetConfigurationDisplayLcdBacklightOnBrightness(uint32_t v);
 void onSetConfigurationDisplayLcdBacklightOffBrightness(uint32_t v);
 void onSetConfigurationBatteryTotalWh(uint32_t v);
 void onSetConfigurationWheelOdometer(uint32_t v);
+#ifndef SW102
+void onSetConfigurationServiceDistance(uint16_t v);
+void onSetConfigurationServiceHours(uint16_t v);
+#endif
 void onSetConfigurationBatterySOCUsedWh(uint32_t v);
 void mainScreenOnDirtyClean(void);
 void secondMainScreenOnDirtyClean(void);

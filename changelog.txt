@@ -10,100 +10,174 @@ Assistance mode available
 The choice of assistance mode is in the main screen.
 At level 0, ON/OFF button to view the current mode, UP/DOWN button to change, ON/OFF button to confirm.
 
-Display Menus (new items)
+Display Menus (* new items)
+
+  Trip memories
+	A auto reset
+	A auto reset hours
+	B auto reset
+	B auto reset hours
+	Reset trip A
+	Reset trip B
+
+  Wheel
+	Max speed
+	Circumference
 
   Battery
-	Voltage cal %
+	Max current
+	Low cut-off
+	*Voltage cal %
+	Resistance
+	Voltage est
+	Resistance est
+	Power loss est
 
   SOC
-	Calculation
-	Manual reset
-	Auto reset %
+	Text
+	*Calculation
+	Reset at voltage
+	Battery total Wh
+	Used Wh
+	*Manual reset
+	*Auto reset %
+	*Charge cycles
 
   Motor
-	Max motor power
-	Motor acceleration
-	Motor deceleration
-	Field weakening
+	Motor voltage
+	*Max motor power
+	*Motor acceleration
+	*Motor deceleration
+	*Field weakening
 
   Torque sensor
-	Torque adc step
-	Torque adc step adv
-	Torque offset adj
-	Torque range adj
-	Torque angle adj
-	Torque adc offset
-	Torque adc max
-	Weight on pedal
-	Torque adc on weight
-	ADC torque step calc
-	Default weight
+	Assist w/o pedal
+	Torque ADC threshold
+	Coast brake
+	Coast brake ADC
+	Calibration
+	*Torque adc step
+	*Torque adc step adv
+	*Torque offset adj
+	*Torque range adj
+	*Torque angle adj
+	*Torque adc offset
+	*Torque adc max
+	*Weight on pedal
+	*Torque adc on weight
+	*ADC torque step calc
+	*Default weight
 
   Assist levels
-	Power assist
-		Level 1
-		Level x
-	Torque assist
-		Level 1
-		Level x
-	Cadence assist
-		Level 1
-		Level x
-	eMTB assist
-		Level 1
-		Level x
+	*Power assist
+		*Level 1
+		*Level x
+	*Torque assist
+		*Level 1
+		*Level x
+	*Cadence assist
+		*Level 1
+		*Level x
+	*eMTB assist
+		*Level 1
+		*Level x
 	Assistance values for all modes from 1 to 254, for eMTB from 1 to 20.
 
   Walk assist
-	Speed 1
-	Speed x
-	Cruise feature
+	*Speed 1
+	*Speed x
+	*Cruise feature
 
   Startup boost
-	Boost torque factor
-	Boost cadence step
-	Boost at zero (cadence/speed)
+	*Boost torque factor
+	*Boost cadence step
+	*Boost at zero (cadence/speed)
 
   Street mode
-	Cruise enable
+	Enable Mode
+	Enable at startup
+	Speed limit
+	Motor power limit
+	Throttle enable
+	*Cruise enable
+	Hotkey enable
 
   Various
-	Lights configuration
-	Assist with error
+	*Lights configuration
+	*Assist with error
+	Virtual throttle step
+	Odometer
+	*A service
+	*A service distance
+	*B service
+	*B service hours
 
   Display
-	Config shortcut key
+	Clock field
+	Clock hours
+	Clock minutes
+	Brightness on
+	Brightness off
+	Buttons invert
+	*Config shortcut key
+	Auto power off
+	Units
+	LCD type
+	Reset to defaults
 
   Technical (view only)
-	ADC torque delta
-	ADC torque boost
+	ADC battery current
+	ADC throttle sensor
+	Throttle sensor
+	ADC torque sensor
+	*ADC torque delta
+	*ADC torque boost
+	Pedal cadence
+	PWM duty-cycle
+	Motor speed
+	Motor FOC
+	Hall sensors
+
+Boot msg:
+  Keep pedals and brakes free
+  Wait TSDZ2
+  SIMULATING TSDZ2!
+  Error brakes or comms
+  Error RX line
+  TSDZ2 firmware error
 
 System msg:
-Keep pedals and brakes free
-Wait TSDZ2
-SIMULATING TSDZ2!
-Error brakes or comms
-Error RX line
-TSDZ2 firmware error
-Error set config
+  Error set config
+  Motor init
+  Report Bug!
 
-Error code:
-e 1 Motor not init
-e 2 Torque Fault
-e 3 Cadence Fault
-e 4 Motor Blocked
-e 5 Throttle Fault
-e 6 Comms Fault
-e 7 Over current
-e 8 Speed Fault
+Warning msg
+  Temp Warning
+  Temp Shutdown
+  Service A
+  Service B
+
+Error msg:
+  e 1 Motor not init
+  e 2 Torque Fault
+  e 3 Cadence Fault
+  e 4 Motor Blocked
+  e 5 Throttle Fault
+  e 6 Comms Fault
+  e 7 Overcurrent
+  e 8 Speed Fault
 
 
 Changed files 860C
-configscreen.c
-eeprom.c
-mainscreen.c
-state.c
-configscreen.h
-eeprom.h
-state.h
+  configscreen.c
+  eeprom.c
+  mainscreen.c
+  state.c
+  screen.c
+  configscreen.h
+  eeprom.h
+  mainscreen.h
+  state.h
+  screen.h
+  Makefile.common
 

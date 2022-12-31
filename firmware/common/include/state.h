@@ -17,11 +17,16 @@
 #define NOT_IN_USE							0
 #define TEMPERATURE_CONTROL					1
 #define THROTTLE_CONTROL					2
+#define LEGAL								2
 
 // screen temperature
 #define AUTO								0
 #define CELSIUS								1
 #define FARENHEIT							2
+
+// temperature sensor type
+#define LM35								0
+#define TMP36								1
 
 // assist level number
 #define ASSIST_LEVEL_NUMBER					9
@@ -99,10 +104,19 @@ typedef struct rt_vars_struct {
 	uint32_t ui32_wheel_speed_sensor_tick_counter_offset;
 
 #ifndef SW102
+	//uint32_t ui32_wh_x10_total;
+	//uint32_t ui32_wh_x10_total_offset;
+	uint16_t ui16_battery_charge_cycles_x10;
 	//uint32_t ui32_wh_x10_trip_a;
 	//uint32_t ui32_wh_x10_trip_b;
 	uint32_t ui32_wh_x10_trip_a_offset;
 	uint32_t ui32_wh_x10_trip_b_offset;
+	
+	uint16_t ui16_service_a_distance;
+	uint16_t ui16_service_b_hours;
+	uint16_t ui16_service_b_time;
+	//uint8_t ui8_service_a_distance_enable;
+	//uint8_t ui8_service_b_hours_enable;
 #endif
 
 	uint8_t ui8_assist_level;
@@ -132,6 +146,8 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_startup_motor_power_boost_feature_enabled;
 	uint8_t ui8_startup_boost_at_zero;
 	uint8_t ui8_startup_assist_feature_enabled;
+	//uint8_t ui8_street_mode_throttle_legal;
+	//uint8_t ui8_street_mode_cruise_legal;
 	//uint8_t ui8_startup_motor_power_boost_always;
 	//uint8_t ui8_startup_motor_power_boost_limit_power;
 	//uint8_t ui8_startup_motor_power_boost_time;
@@ -141,6 +157,7 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_motor_temperature_min_value_to_limit;
 	uint8_t ui8_motor_temperature_max_value_to_limit;
 	uint8_t ui8_screen_temperature;
+	uint8_t ui8_temperature_sensor_type;
 	uint8_t ui8_lcd_backlight_on_brightness;
 	uint8_t ui8_lcd_backlight_off_brightness;
 	//uint8_t ui8_offroad_feature_enabled;
@@ -151,8 +168,8 @@ typedef struct rt_vars_struct {
 	uint32_t ui32_odometer_x10;
 
 #ifndef SW102
-	uint8_t  ui8_trip_a_auto_reset;
-	uint16_t ui16_trip_a_auto_reset_hours;
+	//uint8_t  ui8_trip_a_auto_reset;
+	//uint16_t ui16_trip_a_auto_reset_hours;
 	uint32_t ui32_trip_a_last_update_time;
 #endif
 	uint32_t ui32_trip_a_distance_x1000;
@@ -161,8 +178,8 @@ typedef struct rt_vars_struct {
 	uint16_t ui16_trip_a_max_speed_x10;
 
 #ifndef SW102
-	uint8_t  ui8_trip_b_auto_reset;
-	uint16_t ui16_trip_b_auto_reset_hours;
+	//uint8_t  ui8_trip_b_auto_reset;
+	//uint16_t ui16_trip_b_auto_reset_hours;
 	uint32_t ui32_trip_b_last_update_time;
 #endif
 	uint32_t ui32_trip_b_distance_x1000;
@@ -268,10 +285,20 @@ typedef struct ui_vars_struct {
 	uint32_t ui32_wh_x10;
 
 #ifndef SW102
+	uint32_t ui32_wh_x10_total;
+	uint32_t ui32_wh_x10_total_offset;
+	uint16_t ui16_battery_charge_cycles_x10;
+	
 	uint32_t ui32_wh_x10_trip_a;
 	uint32_t ui32_wh_x10_trip_b;
 	uint32_t ui32_wh_x10_trip_a_offset;
 	uint32_t ui32_wh_x10_trip_b_offset;
+	
+	uint16_t ui16_service_a_distance;
+	uint16_t ui16_service_b_hours;
+	uint16_t ui16_service_b_time;
+	uint8_t ui8_service_a_distance_enable;
+	uint8_t ui8_service_b_hours_enable;
 #endif
 	
 	uint8_t ui8_assist_level;
@@ -305,6 +332,8 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_startup_motor_power_boost_feature_enabled;
 	uint8_t ui8_startup_boost_at_zero;
 	uint8_t ui8_startup_assist_feature_enabled;
+	uint8_t ui8_street_mode_throttle_legal;
+	uint8_t ui8_street_mode_cruise_legal;
 	//uint8_t ui8_startup_motor_power_boost_always;
 	//uint8_t ui8_startup_motor_power_boost_limit_power;
 	//uint8_t ui8_startup_motor_power_boost_time;
@@ -314,6 +343,7 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_motor_temperature_min_value_to_limit;
 	uint8_t ui8_motor_temperature_max_value_to_limit;
 	uint8_t ui8_screen_temperature;
+	uint8_t ui8_temperature_sensor_type;
 	uint8_t ui8_lcd_power_off_time_minutes;
 	uint8_t ui8_lcd_backlight_on_brightness;
 	uint8_t ui8_lcd_backlight_off_brightness;

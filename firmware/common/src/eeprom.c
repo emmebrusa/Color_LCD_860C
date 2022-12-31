@@ -31,6 +31,12 @@ const eeprom_data_t m_eeprom_data_defaults = {
   //.ui8_units_type = DEFAULT_VALUE_UNITS_TYPE,
   
 #ifndef SW102
+  .ui16_service_a_distance = DEFAULT_VALUE_SERVICE_A_DISTANCE,
+  .ui16_service_b_hours = DEFAULT_VALUE_SERVICE_B_HOURS,
+  .ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME,
+  .ui8_service_a_distance_enable = DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE,
+  .ui8_service_b_hours_enable = DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE,
+  .ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET,
   .ui32_wh_x10_trip_a_offset = DEFAULT_VALUE_WH_X10_TRIP_A_OFFSET,
   .ui32_wh_x10_trip_b_offset = DEFAULT_VALUE_WH_X10_TRIP_B_OFFSET,
 #endif
@@ -151,6 +157,8 @@ const eeprom_data_t m_eeprom_data_defaults = {
   DEFAULT_VALUE_MOTOR_TEMPERATURE_MAX_VALUE_LIMIT,
   .ui8_screen_temperature = 
   DEFAULT_VALUE_SCREEN_TEMPERATURE,
+  .ui8_temperature_sensor_type = 
+  DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE,
   .ui8_battery_soc_percent_calculation = 
   DEFAULT_VALUE_BATTERY_SOC_PERCENT_CALCULATION,
   .ui8_battery_soc_auto_reset = 
@@ -263,19 +271,19 @@ const eeprom_data_t m_eeprom_data_defaults = {
 
     2, // trip A distance
     4, // trip A avg speed
-    3, // trip A time
-    5, // trip A max speed
+    23, // trip A used Wh
+    25, // trip A Wh/km
 
     20, // PWM
+    14, // battery voltage
+    11, // cadence
     15, // battery current
-    19, // motor speed
-    13, // motor power
   },
 
   .graphs_field_selectors = {
     0, // wheel speed
-    3, // human power
-    5, // battery voltage
+    5, // Wh/km
+    4, // power
   },
 #endif
 
@@ -438,7 +446,7 @@ void eeprom_init() {
 			memcpy(&m_eeprom_data, &m_eeprom_data_defaults,
 				sizeof(m_eeprom_data_defaults));
 	}
-	else if (m_eeprom_data.eeprom_version < EEPROM_VERSION) {
+	else if (m_eeprom_data.eeprom_version < EEPROM_MID_VERSION) {
 		m_eeprom_data.eeprom_version = EEPROM_VERSION;
 		m_eeprom_data.ui8_adc_pedal_torque_offset_adj = DEFAULT_TORQUE_SENSOR_ADC_OFFSET_ADJ;
 		m_eeprom_data.ui8_adc_pedal_torque_range_adj = DEFAULT_TORQUE_SENSOR_ADC_RANGE_ADJ;
@@ -447,8 +455,33 @@ void eeprom_init() {
 		m_eeprom_data.ui8_battery_soc_auto_reset = DEFAULT_VALUE_BATTERY_SOC_RESET;
 		m_eeprom_data.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100 = DEFAULT_VALUE_PEDAL_TORQUE_ADC_STEP_ADV_x100;
 		m_eeprom_data.ui8_adc_pedal_torque_angle_adj_index = DEFAULT_TORQUE_SENSOR_ADC_ANGLE_ADJ_INDEX;
+		m_eeprom_data.ui8_temperature_sensor_type = DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE;
+#ifndef SW102
+		m_eeprom_data.ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET;
+		m_eeprom_data.ui16_service_a_distance = DEFAULT_VALUE_SERVICE_A_DISTANCE;
+		m_eeprom_data.ui16_service_b_hours = DEFAULT_VALUE_SERVICE_B_HOURS;
+		m_eeprom_data.ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME;
+		m_eeprom_data.ui8_service_a_distance_enable = DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE;
+		m_eeprom_data.ui8_service_b_hours_enable = DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE;
 	}
-	
+	else if (m_eeprom_data.eeprom_version < EEPROM_VERSION) {
+		m_eeprom_data.eeprom_version = EEPROM_VERSION;
+		m_eeprom_data.ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET;
+		m_eeprom_data.ui16_service_a_distance = DEFAULT_VALUE_SERVICE_A_DISTANCE;
+		m_eeprom_data.ui16_service_b_hours = DEFAULT_VALUE_SERVICE_B_HOURS;
+		m_eeprom_data.ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME;
+		m_eeprom_data.ui8_service_a_distance_enable = DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE;
+		m_eeprom_data.ui8_service_b_hours_enable = DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE;
+		m_eeprom_data.ui8_temperature_sensor_type = DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE;
+	}
+#else
+	}
+	else if (m_eeprom_data.eeprom_version < EEPROM_VERSION) {
+		m_eeprom_data.eeprom_version = EEPROM_VERSION;
+		m_eeprom_data.ui8_temperature_sensor_type = DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE;
+	}
+#endif
+
 //	// Perform whatever migrations we need to update old eeprom formats
 //	if (m_eeprom_data.eeprom_version < EEPROM_VERSION) {
 //
@@ -482,6 +515,7 @@ void eeprom_init_variables(void) {
 	ui_vars->ui8_units_type = (m_eeprom_data.ui8_bit_data_1 & 1);
 	
 #ifndef SW102
+	ui_vars->ui32_wh_x10_total_offset = m_eeprom_data.ui32_wh_x10_total_offset;
 	ui_vars->ui32_wh_x10_trip_a_offset = m_eeprom_data.ui32_wh_x10_trip_a_offset;
 	ui_vars->ui32_wh_x10_trip_b_offset = m_eeprom_data.ui32_wh_x10_trip_b_offset;
 #endif
@@ -535,6 +569,7 @@ void eeprom_init_variables(void) {
 	ui_vars->ui8_motor_temperature_max_value_to_limit =
 			m_eeprom_data.ui8_motor_temperature_max_value_to_limit;
 	ui_vars->ui8_screen_temperature = m_eeprom_data.ui8_screen_temperature;
+	ui_vars->ui8_temperature_sensor_type = m_eeprom_data.ui8_temperature_sensor_type;
 	ui_vars->ui8_battery_soc_percent_calculation =
 			m_eeprom_data.ui8_battery_soc_percent_calculation;
 	ui_vars->ui8_battery_soc_auto_reset =
@@ -730,11 +765,11 @@ void eeprom_init_variables(void) {
   ui_vars->ui8_street_mode_power_limit_div25 =
       m_eeprom_data.ui8_street_mode_power_limit_div25;
   ui_vars->ui8_street_mode_throttle_enabled =
-      (m_eeprom_data.ui8_bit_data_2 & 64) >> 6;
+      ((m_eeprom_data.ui8_bit_data_2 & 64) >> 6) + ((m_eeprom_data.ui8_bit_data_3 & 32) >> 4);
   ui_vars->ui8_street_mode_hotkey_enabled =
       (m_eeprom_data.ui8_bit_data_2 & 128) >> 7;
   ui_vars->ui8_street_mode_cruise_enabled =
-      m_eeprom_data.ui8_bit_data_3 & 1;
+      (m_eeprom_data.ui8_bit_data_3 & 1) + ((m_eeprom_data.ui8_bit_data_3 & 64) >> 5);
 #ifndef SW102
   ui_vars->ui8_config_shortcut_key_enabled =
 	  (m_eeprom_data.ui8_bit_data_3 & 2) >> 1;
@@ -749,6 +784,10 @@ void eeprom_init_variables(void) {
 #endif
   ui_vars->ui8_startup_boost_at_zero =
 	  (m_eeprom_data.ui8_bit_data_3 & 16) >> 4;
+  ui_vars->ui8_street_mode_throttle_legal =
+	  (m_eeprom_data.ui8_bit_data_3 & 32) >> 5;
+  ui_vars->ui8_street_mode_cruise_legal =
+	  (m_eeprom_data.ui8_bit_data_3 & 64) >> 6;
   //ui_vars->ui8_pedal_cadence_fast_stop =
   //    m_eeprom_data.ui8_bit_data_3 & 1;
   ui_vars->ui8_coast_brake_adc =
@@ -797,13 +836,23 @@ void eeprom_init_variables(void) {
 	  m_eeprom_data.ui16_adc_pedal_torque_with_weight;
   
 #ifndef SW102
+  rt_vars->ui16_service_a_distance =
+    m_eeprom_data.ui16_service_a_distance;
+  rt_vars->ui16_service_b_hours =
+    m_eeprom_data.ui16_service_b_hours;
+  rt_vars->ui16_service_b_time =
+    m_eeprom_data.ui16_service_b_time;
+  ui_vars->ui8_service_a_distance_enable =
+    m_eeprom_data.ui8_service_a_distance_enable;
+  ui_vars->ui8_service_b_hours_enable =
+    m_eeprom_data.ui8_service_b_hours_enable;
+
   ui_vars->ui8_trip_a_auto_reset =
     m_eeprom_data.ui8_trip_a_auto_reset;
   ui_vars->ui16_trip_a_auto_reset_hours =
     m_eeprom_data.ui16_trip_a_auto_reset_hours;
   rt_vars->ui32_trip_a_last_update_time =
     m_eeprom_data.ui32_trip_a_last_update_time;
-
   ui_vars->ui8_trip_b_auto_reset =
     m_eeprom_data.ui8_trip_b_auto_reset;
   ui_vars->ui16_trip_b_auto_reset_hours =
@@ -849,14 +898,16 @@ void eeprom_write_variables(void) {
 	  (ui_vars->ui8_street_mode_function_enabled << 3) |
 	  (ui_vars->ui8_street_mode_enabled << 4) |
 	  (ui_vars->ui8_street_mode_enabled_on_startup << 5) |
-	  (ui_vars->ui8_street_mode_throttle_enabled << 6) |
+	  ((ui_vars->ui8_street_mode_throttle_enabled & 1) << 6) |
 	  (ui_vars->ui8_street_mode_hotkey_enabled << 7));
 	
-	m_eeprom_data.ui8_bit_data_3 = (ui_vars->ui8_street_mode_cruise_enabled |
+	m_eeprom_data.ui8_bit_data_3 = ((ui_vars->ui8_street_mode_cruise_enabled & 1) |
 	  (ui_vars->ui8_config_shortcut_key_enabled << 1) |
 	  (ui_vars->ui8_field_weakening_feature_enabled << 2) |
 	  (ui_vars->ui8_startup_assist_feature_enabled << 3) |
-	  (ui_vars->ui8_startup_boost_at_zero << 4));
+	  (ui_vars->ui8_startup_boost_at_zero << 4) |
+	  (ui_vars->ui8_street_mode_throttle_legal << 5) |
+	  (ui_vars->ui8_street_mode_cruise_legal << 6));
 	// bit free for future use
 	
 	m_eeprom_data.ui8_riding_mode = ui_vars->ui8_riding_mode;
@@ -867,24 +918,26 @@ void eeprom_write_variables(void) {
 	//m_eeprom_data.ui8_units_type = ui_vars->ui8_units_type;
 	
 #ifndef SW102
-	m_eeprom_data.ui32_wh_x10_trip_a_offset = ui_vars->ui32_wh_x10_trip_a_offset;
-	m_eeprom_data.ui32_wh_x10_trip_b_offset = ui_vars->ui32_wh_x10_trip_b_offset;
+	// save total & trip Wh
+	m_eeprom_data.ui32_wh_x10_total_offset = ui_vars->ui32_wh_x10_total;
+	m_eeprom_data.ui32_wh_x10_trip_a_offset = ui_vars->ui32_wh_x10_trip_a;
+	m_eeprom_data.ui32_wh_x10_trip_b_offset = ui_vars->ui32_wh_x10_trip_b;
 #endif
 
 	m_eeprom_data.ui32_wh_x10_offset = ui_vars->ui32_wh_x10_offset;
 	m_eeprom_data.ui32_wh_x10_100_percent =
-			ui_vars->ui32_wh_x10_100_percent;
+		ui_vars->ui32_wh_x10_100_percent;
 	m_eeprom_data.ui8_battery_soc_enable =
-			ui_vars->ui8_battery_soc_enable;
-  m_eeprom_data.ui8_time_field_enable = ui_vars->ui8_time_field_enable;
-  m_eeprom_data.ui8_target_max_battery_power_div25 =
-      ui_vars->ui8_target_max_battery_power_div25;
-  m_eeprom_data.ui8_battery_max_current =
-      ui_vars->ui8_battery_max_current;
-  m_eeprom_data.ui8_motor_max_current =
-      ui_vars->ui8_motor_max_current;
-  m_eeprom_data.ui8_motor_current_min_adc =
-      ui_vars->ui8_motor_current_min_adc;
+		ui_vars->ui8_battery_soc_enable;
+	m_eeprom_data.ui8_time_field_enable = ui_vars->ui8_time_field_enable;
+	m_eeprom_data.ui8_target_max_battery_power_div25 =
+		ui_vars->ui8_target_max_battery_power_div25;
+	m_eeprom_data.ui8_battery_max_current =
+		ui_vars->ui8_battery_max_current;
+	m_eeprom_data.ui8_motor_max_current =
+		ui_vars->ui8_motor_max_current;
+	m_eeprom_data.ui8_motor_current_min_adc =
+		ui_vars->ui8_motor_current_min_adc;
 	//m_eeprom_data.ui8_field_weakening_feature_enabled =
 	//    ui_vars->ui8_field_weakening_feature_enabled;
 	//m_eeprom_data.ui8_ramp_up_amps_per_second_x10 =
@@ -899,6 +952,7 @@ void eeprom_write_variables(void) {
 	//		ui_vars->ui8_motor_assistance_startup_without_pedal_rotation;
 	m_eeprom_data.ui8_optional_ADC_function = ui_vars->ui8_optional_ADC_function;
 	m_eeprom_data.ui8_screen_temperature = ui_vars->ui8_screen_temperature;
+	m_eeprom_data.ui8_temperature_sensor_type = ui_vars->ui8_temperature_sensor_type;
 	m_eeprom_data.ui8_battery_soc_percent_calculation =
 			ui_vars->ui8_battery_soc_percent_calculation;
 	m_eeprom_data.ui8_battery_soc_auto_reset =
@@ -1066,6 +1120,17 @@ void eeprom_write_variables(void) {
   //    ui_vars->ui8_coast_brake_enable;
 			
 #ifndef SW102
+  m_eeprom_data.ui16_service_a_distance =
+    ui_vars->ui16_service_a_distance;
+  m_eeprom_data.ui16_service_b_hours =
+    ui_vars->ui16_service_b_hours;
+  m_eeprom_data.ui16_service_b_time =
+    ui_vars->ui16_service_b_time;
+  m_eeprom_data.ui8_service_a_distance_enable =
+    ui_vars->ui8_service_a_distance_enable;
+  m_eeprom_data.ui8_service_b_hours_enable =
+    ui_vars->ui8_service_b_hours_enable;
+
   m_eeprom_data.ui8_trip_a_auto_reset =
     ui_vars->ui8_trip_a_auto_reset;
   m_eeprom_data.ui16_trip_a_auto_reset_hours = 

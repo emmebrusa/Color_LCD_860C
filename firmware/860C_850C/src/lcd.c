@@ -93,10 +93,6 @@ void lcd_power_off(uint8_t updateDistanceOdo)
 {
   // save current battery Wh
   ui_vars.ui32_wh_x10_offset = ui_vars.ui32_wh_x10;
-  
-  // save current trip A and B Wh
-  ui_vars.ui32_wh_x10_trip_a_offset = ui_vars.ui32_wh_x10_trip_a;
-  ui_vars.ui32_wh_x10_trip_b_offset = ui_vars.ui32_wh_x10_trip_b;
 
   // save the variables on EEPROM
   eeprom_write_variables ();

@@ -45,10 +45,14 @@ static Field batterySOCMenus[] =
 	FIELD_EDITABLE_ENUM("Text", &ui_vars.ui8_battery_soc_enable, "disable", "SOC %", "volts"),
 	FIELD_EDITABLE_ENUM("Calculation", &ui_vars.ui8_battery_soc_percent_calculation, "auto", "Wh", "volts"),
 	FIELD_EDITABLE_UINT(_S("Reset at voltage", "Reset at"), &ui_vars.ui16_battery_voltage_reset_wh_counter_x10, "volts", 160, 630, .div_digits = 1),
-	FIELD_EDITABLE_UINT(_S("Battery total Wh", "Batt total"), &ui_vars.ui32_wh_x10_100_percent, "whr", 0, 19990, .div_digits = 1, .inc_step = 100),
+	FIELD_EDITABLE_UINT(_S("Battery total Wh", "Batt total"), &ui_vars.ui32_wh_x10_100_percent, "whr", 0, 29990, .div_digits = 1, .inc_step = 100),
 	FIELD_EDITABLE_UINT("Used Wh", &ui_vars.ui32_wh_x10, "whr", 0, 99900, .div_digits = 1, .inc_step = 10, .onSetEditable = onSetConfigurationBatterySOCUsedWh),
 	FIELD_EDITABLE_ENUM(_S("Manual reset", "Manual rst"), &ui8_g_configuration_battery_soc_reset, "no", "yes"),
-	FIELD_EDITABLE_UINT(_S("Auto reset %", "Auto srt%"), &ui_vars.ui8_battery_soc_auto_reset, "", 0, 100),
+	FIELD_EDITABLE_UINT(_S("Auto reset %", "Auto rst%"), &ui_vars.ui8_battery_soc_auto_reset, "", 0, 100),
+#ifndef SW102
+	FIELD_READONLY_UINT("Charge cycles", &ui_vars.ui16_battery_charge_cycles_x10, "", .div_digits = 1),
+	//FIELD_READONLY_UINT("Used total Wh", &ui_vars.ui32_wh_x10_total, "", .div_digits = 1),
+#endif
 	FIELD_END };
 
 static Field motorMenus[] =
@@ -203,6 +207,7 @@ static Field motorTempMenus[] =
 	FIELD_EDITABLE_UINT("Min limit", &ui_vars.ui8_motor_temperature_min_value_to_limit, "C", 0, 255),
 	FIELD_EDITABLE_UINT("Max limit", &ui_vars.ui8_motor_temperature_max_value_to_limit, "C", 0, 255),
 	FIELD_EDITABLE_ENUM("Units", &ui_vars.ui8_screen_temperature, "auto", "celsius", "farenheit"),
+	//FIELD_EDITABLE_ENUM(_S("Sensor type", "Sens type"), &ui_vars.ui8_temperature_sensor_type, "LM35", "TMP36"),
 	FIELD_END };
 
 static Field streetModeMenus[] =
@@ -212,8 +217,8 @@ static Field streetModeMenus[] =
 	FIELD_EDITABLE_ENUM(_S("Enable at startup", "Enabl stup"), &ui_vars.ui8_street_mode_enabled_on_startup, "no", "yes"),
 	FIELD_EDITABLE_UINT(_S("Speed limit", "Speed limt"), &ui_vars.ui8_street_mode_speed_limit, "kph", 1, 99, .div_digits = 0, .inc_step = 1, .hide_fraction = true),
 	FIELD_EDITABLE_UINT(_S("Motor power limit", "Power limt"), &ui_vars.ui16_street_mode_power_limit, "watts", 25, 2500, .div_digits = 0, .inc_step = 25, .hide_fraction = true),
-	FIELD_EDITABLE_ENUM(_S("Throttle enable", "Throt enab"), &ui_vars.ui8_street_mode_throttle_enabled, "no", "yes"),
-	FIELD_EDITABLE_ENUM(_S("Cruise enable", "Cruise ena"), &ui_vars.ui8_street_mode_cruise_enabled, "no", "yes"),
+	FIELD_EDITABLE_ENUM(_S("Throttle enable", "Throt enab"), &ui_vars.ui8_street_mode_throttle_enabled, "no", "yes", "legal"),
+	FIELD_EDITABLE_ENUM(_S("Cruise enable", "Cruise ena"), &ui_vars.ui8_street_mode_cruise_enabled, "no", "yes", "legal"),
 	FIELD_EDITABLE_ENUM(_S("Hotkey enable", "HotKy enab"), &ui_vars.ui8_street_mode_hotkey_enabled, "no", "yes"),
     FIELD_END };
 
@@ -245,6 +250,13 @@ static Field variousMenus[] =
 	FIELD_EDITABLE_ENUM(_S("Assist with error", "As with er"), &ui_vars.ui8_assist_whit_error_enabled, "no", "yes"),
     FIELD_EDITABLE_UINT(_S("Virtual throttle step", "V thr step"), &ui_vars.ui8_throttle_virtual_step, "", 1, 100),
     FIELD_EDITABLE_UINT("Odometer", &ui_vars.ui32_odometer_x10, "km", 0, UINT32_MAX, .div_digits = 1, .inc_step = 100, .onSetEditable = onSetConfigurationWheelOdometer),
+#ifndef SW102
+	FIELD_EDITABLE_ENUM("A service", &ui_vars.ui8_service_a_distance_enable, "disable", "enable"),
+	FIELD_EDITABLE_UINT("A service distance", &ui_vars.ui16_service_a_distance, "km", 0, 10000, .div_digits = 0, .inc_step = 10, .onSetEditable = onSetConfigurationServiceDistance),
+	FIELD_EDITABLE_ENUM("B service", &ui_vars.ui8_service_b_hours_enable, "disable", "enable"),
+	FIELD_EDITABLE_UINT("B service hours", &ui_vars.ui16_service_b_hours, "hrs", 0, 10000, .div_digits = 0, .inc_step = 10, .onSetEditable = onSetConfigurationServiceHours),
+#endif
+	//FIELD_READONLY_UINT(_S("OSF motor     v20.1C", "Mot v20.1C"), &g_tsdz2_firmware_version.patch, "", false, .div_digits = 1),
 	FIELD_END };
 
 #ifndef SW102

@@ -16,7 +16,8 @@
 // For compatible changes, just add new fields at the end of the table (they will be inited to 0xff for old eeprom images).
 // For incompatible changes bump up EEPROM_MIN_COMPAT_VERSION and the user's EEPROM settings will be discarded.
 #define EEPROM_MIN_COMPAT_VERSION 0x40
-#define EEPROM_VERSION 0x41
+#define EEPROM_MID_VERSION 0x41
+#define EEPROM_VERSION 0x42
 
 typedef struct {
   graph_auto_max_min_t auto_max_min;
@@ -205,6 +206,17 @@ typedef struct eeprom_data {
   uint8_t ui8_pedal_torque_per_10_bit_ADC_step_adv_x100;
   uint8_t ui8_adc_pedal_torque_angle_adj_index;
   
+#ifndef SW102  
+	uint32_t ui32_wh_x10_total_offset;
+ 	uint16_t ui16_service_a_distance;
+	uint16_t ui16_service_b_hours;
+	uint16_t ui16_service_b_time;
+	uint8_t ui8_service_a_distance_enable;
+	uint8_t ui8_service_b_hours_enable;
+#endif
+
+	uint8_t ui8_temperature_sensor_type;
+	
 // FIXME align to 32 bit value by end of structure and pack other fields
 } eeprom_data_t;
 
@@ -222,6 +234,12 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_WHEEL_MAX_SPEED                               50 // 50 km/h
 #define DEFAULT_VALUE_UNITS_TYPE                                    0 // // 0=km/h, 1=miles
 #ifndef SW102
+#define DEFAULT_VALUE_SERVICE_A_DISTANCE							0
+#define DEFAULT_VALUE_SERVICE_B_HOURS								0
+#define DEFAULT_VALUE_SERVICE_B_TIME								0
+#define DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE						0
+#define DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE						0
+#define DEFAULT_VALUE_WH_X10_TOTAL_OFFSET							0
 #define DEFAULT_VALUE_WH_X10_TRIP_A_OFFSET							0
 #define DEFAULT_VALUE_WH_X10_TRIP_B_OFFSET							0
 #endif
@@ -304,13 +322,15 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_STARTUP_BOOST_TORQUE_FACTOR					250
 #define DEFAULT_VALUE_STARTUP_BOOST_CADENCE_STEP					25
 #define DEFAULT_VALUE_STARTUP_BOOST_AT_ZERO							0 // 0=cadence 1=speed
-
+#define DEFAULT_VALUE_THROTTLE_LEGAL								0
+#define DEFAULT_VALUE_CRUISE_LEGAL									0
 #define DEFAULT_VALUE_STARTUP_ASSIST_FEATURE_ENABLED     			1
 
 #define DEFAULT_VALUE_OPTIONAL_ADC_FUNCTION              			0 // 0=not used 1=temperature control 2=throttle control
 #define DEFAULT_VALUE_MOTOR_TEMPERATURE_MIN_VALUE_LIMIT             65 // 65 degrees celsius
 #define DEFAULT_VALUE_MOTOR_TEMPERATURE_MAX_VALUE_LIMIT             85 // 85 degrees celsius
 #define DEFAULT_VALUE_SCREEN_TEMPERATURE							0 // 0=AUTO 1=CELSIUS 2=FARENHEIT		
+#define DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE						0 // 0=LM35 1=TMP36
 
 #define DEFAULT_VALUE_BATTERY_VOLTAGE_RESET_WH_COUNTER_X10          584 // 52v battery, 58.4 volts at fully charged
 #define DEFAULT_VALUE_LCD_POWER_OFF_TIME                            30 // 30 minutes, each unit 1 minute
@@ -396,9 +416,10 @@ void eeprom_init_defaults(void);
 (DEFAULT_VALUE_CONFIG_SHORTCUT_KEY_ENABLED << 1) | \
 (DEFAULT_VALUE_FIELD_WEAKENING_FEATURE_ENABLED << 2) | \
 (DEFAULT_VALUE_STARTUP_ASSIST_FEATURE_ENABLED << 3) | \
-(DEFAULT_VALUE_STARTUP_BOOST_AT_ZERO << 4))
+(DEFAULT_VALUE_STARTUP_BOOST_AT_ZERO << 4) | \
+(DEFAULT_VALUE_THROTTLE_LEGAL << 5) | \
+(DEFAULT_VALUE_CRUISE_LEGAL << 6))
 // bit free for future use
-
 
 // *************************************************************************** //
 
