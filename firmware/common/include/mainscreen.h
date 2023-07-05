@@ -96,6 +96,7 @@ extern uint8_t g_showNextScreenPreviousIndex;
 extern Field batteryField; // These fields are custom for board type
 void battery_display(); // 850C and sw102 provide alternative versions due to different implementations
 void set_conversions();
+void password_check();
 bool anyscreen_onpress(buttons_events_t events);
 void clock_time(void);
 void onSetConfigurationClockHours(uint32_t v);
@@ -105,8 +106,8 @@ void onSetConfigurationDisplayLcdBacklightOffBrightness(uint32_t v);
 void onSetConfigurationBatteryTotalWh(uint32_t v);
 void onSetConfigurationWheelOdometer(uint32_t v);
 #ifndef SW102
-void onSetConfigurationServiceDistance(uint16_t v);
-void onSetConfigurationServiceHours(uint16_t v);
+void onSetConfigurationServiceDistance(uint32_t v);
+void onSetConfigurationServiceHours(uint32_t v);
 #endif
 void onSetConfigurationBatterySOCUsedWh(uint32_t v);
 void mainScreenOnDirtyClean(void);

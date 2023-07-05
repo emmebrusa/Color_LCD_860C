@@ -20,9 +20,17 @@ Display Menus (* new items)
 	Reset trip A
 	Reset trip B
 
-  Wheel
+  *Bike
 	Max speed
 	Circumference
+	Max power limit
+	Assist with error
+	Throttle
+	Cruise
+	Password enable (no / yes)
+	Password
+	Confirm
+	Reset
 
   Battery
 	Max current
@@ -93,13 +101,21 @@ Display Menus (* new items)
 	*Boost cadence step
 	*Boost at zero (cadence/speed)
 
+  Motor temperature
+	Feature
+	Min limit
+	Max limit
+	*Units
+	*Sensor type
+	*Brake
+
   Street mode
 	Enable Mode
 	Enable at startup
 	Speed limit
 	Motor power limit
-	Throttle enable
-	*Cruise enable
+	*Throttle
+	*Cruise
 	Hotkey enable
 
   Various

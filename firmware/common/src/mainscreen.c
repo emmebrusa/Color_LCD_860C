@@ -27,6 +27,8 @@
 #include "rtc.h"
 #ifdef SW102
 #include "peer_manager.h"
+#else
+#include "stm32f10x_rtc.h"
 #endif
 
 // TSDZ2 20.1
@@ -34,6 +36,7 @@
 #define CRUISE_THRESHOLD_SPEED_X10				90  // 90 -> 9.0 km/h
 static uint8_t ui8_set_riding_mode = 0; // 0=disabled, 1=enabled
 static uint8_t ui8_configuration_flag = 0;
+static uint8_t ui8_reset_password_counter = 100;
 volatile uint8_t ui8_display_ready_counter = 60;
 volatile uint8_t ui8_voltage_ready_counter = 120;
 volatile uint8_t ui8_battery_soc_used[100] = { 1, 1, 2, 3, 4, 5, 6, 8, 10, 12, 13, 15, 17, 19, 21, 23, 25, 26, 28,
@@ -106,8 +109,8 @@ void batteryResistance(void);
 void motorCurrent(void);
 void batteryPower(void);
 void pedalPower(void);
-void thresholds(void);
 #ifndef SW102
+void thresholds(void);
 void ServiceWarning(void);
 #endif
 
@@ -810,6 +813,7 @@ void screen_clock(void) {
     // do this in atomic way, disabling the real time layer (should be no problem as
     // copy_rt_to_ui_vars() should be fast and take a small piece of the 100ms periodic realtime layer processing
     rt_processing_stop();
+	password_check();
     copy_rt_to_ui_vars();
     rt_processing_start();
 
@@ -838,8 +842,8 @@ void screen_clock(void) {
   }
 }
 
-void thresholds(void) {
 #ifndef SW102
+void thresholds(void) {
 
   odoField.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
   odoFieldGraph.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
@@ -1063,8 +1067,8 @@ void thresholds(void) {
     motorFOCField.rw->editable.number.warn_threshold =
         motorFOCFieldGraph.rw->editable.number.warn_threshold = *motorFOCField.rw->editable.number.config_warn_threshold;
   }
-#endif
 }
+#endif
 
 void up_time(void) {
 	rtc_time_t *p_time = rtc_get_time_since_startup();
@@ -1120,7 +1124,11 @@ void setWarning(ColorOp color, const char *str) {
 		strncpy(warningStr, str, sizeof(warningStr));
 }
 
-static const char *motorErrors[] = { _S("None", "None"), _S("Motor not init", "Mot no ini"), "Torque Fault", "Cadence Fault", "Motor Blocked", "Throttle Fault", "Comms", "Over current", "Speed Fault"};
+#ifndef SW102
+static const char *motorErrors[] = { "None", "Motor not init", "Torque Fault", "Cadence Fault", "Motor Blocked", "Throttle Fault", "Comms", "Overcurrent", "Speed Fault"};
+#else
+static const char *motorErrors[] = { "None", "Mot no ini", "Torq Fault", "CadenFault", "MotBlocked", "Thro Fault", "Comms", "Overcurren", "SpeedFault"};
+#endif
 
 void warnings(void) {
   //uint32_t motor_temp_limit = ui_vars.ui8_temperature_limit_feature_enabled & 1;
@@ -1135,6 +1143,8 @@ void warnings(void) {
     case MOTOR_INIT_WAIT_GOT_CONFIGURATIONS_OK:
       setWarning(ColorWarning, _S("Motor init", "Motor init"));
       return;
+	default:
+      break;
   }
   
   // voltage ready counter
@@ -1197,8 +1207,9 @@ void warnings(void) {
 		return;
 	}
 
-	if((ui_vars.ui8_optional_ADC_function == TEMPERATURE_CONTROL)&&
-	   (ui_vars.ui8_motor_temperature >= ui_vars.ui8_motor_temperature_max_value_to_limit)) {
+	if(((ui_vars.ui8_optional_ADC_function == TEMPERATURE_CONTROL)&&
+	   (ui_vars.ui8_motor_temperature >= ui_vars.ui8_motor_temperature_max_value_to_limit))
+	 ||((ui_vars.ui8_braking)&&(ui_vars.ui8_brake_input == TEMPERATURE))){
 			setWarning(ColorError, _S("Temp Shutdown", "Temp Shut"));
 			return;
 	}
@@ -1218,7 +1229,7 @@ void warnings(void) {
 
 	// All of the following possible 'faults' are low priority
 
-	if (ui_vars.ui8_braking) {
+	if ((ui_vars.ui8_braking)&&(ui_vars.ui8_brake_input == BRAKE)) {
 		setWarning(ColorNormal, "BRAKE");
 		return;
 	}
@@ -1327,7 +1338,8 @@ void startup_assist_state(void) {
       ui8_startup_assist_timeout = 4; // 0.4 seconds
 	  
 	  if (--ui8_startup_assist_maxtime == 0)
-		  ui_vars.ui8_startup_assist = 0;
+		  ui8_startup_assist_maxtime++;
+		  //ui_vars.ui8_startup_assist = 0;
 	  
 	  if((ui8_startup_assist_maxtime <= 80) // 2 seconds (100 - 80)
 		&&(!ui8_startup_assist_lights_restore)) {
@@ -1470,11 +1482,17 @@ void onSetConfigurationBatteryTotalWh(uint32_t v) {
 
 void DisplayResetToDefaults(void) {
 
-  if (ui8_g_configuration_display_reset_to_defaults) {
-    ui8_g_configuration_display_reset_to_defaults = 0;
-    eeprom_init_defaults();
-	ui_vars.ui16_street_mode_power_limit = ui_vars.ui8_street_mode_power_limit_div25 * 25;
-	ui_vars.ui16_target_max_battery_power = ui_vars.ui8_target_max_battery_power_div25 * 25;
+  if((ui8_g_configuration_display_reset_to_defaults)
+	&&(ui_vars.ui8_confirm_default_reset)) {
+		ui8_g_configuration_display_reset_to_defaults = 0;
+		ui_vars.ui8_confirm_default_reset = 0;
+		eeprom_init_defaults();
+		ui_vars.ui16_street_mode_power_limit = ui_vars.ui8_street_mode_power_limit_div25 * 25;
+		ui_vars.ui16_target_max_battery_power = ui_vars.ui8_target_max_battery_power_div25 * 25;
+  }
+  else if((!ui8_g_configuration_display_reset_to_defaults)
+	&&(ui_vars.ui8_confirm_default_reset)) {
+		ui_vars.ui8_confirm_default_reset = 0;
   }
 }
 
@@ -1561,7 +1579,7 @@ void SetDefaultWeight(void) {
 #ifndef SW102
 void ServiceWarning(void) {
 	// service a distance
-	if((ui_vars.ui8_service_a_distance_enable)&&(!rt_vars.ui16_service_a_distance)) {
+	if((ui_vars.ui8_service_a_distance_enable)&&(!rt_vars.ui32_service_a_distance)) {
 		ui8_service_a_distance_warning = 1;
 	}
 	else {
@@ -1569,7 +1587,7 @@ void ServiceWarning(void) {
 	}
 	
 	// service b hours
-	if((ui_vars.ui8_service_b_hours_enable)&&(!rt_vars.ui16_service_b_hours)) {
+	if((ui_vars.ui8_service_b_hours_enable)&&(!rt_vars.ui32_service_b_hours)) {
 		ui8_service_b_hours_warning = 1;
 	}
 	else {
@@ -1662,6 +1680,9 @@ void batteryResistance(void) {
 
       state = WAIT_MOTOR_STOP;
       break;
+	  
+	default:
+      break;
   }
 
 }
@@ -1680,15 +1701,15 @@ void onSetConfigurationWheelOdometer(uint32_t v) {
 	rt_vars.ui32_odometer_x10 = v;
 }
 #ifndef SW102
-void onSetConfigurationServiceDistance(uint16_t v) {
+void onSetConfigurationServiceDistance(uint32_t v) {
   if (screenConvertMiles)
-	rt_vars.ui16_service_a_distance = (v * 161) / 100;
+	rt_vars.ui32_service_a_distance = (v * 161) / 100;
   else
-	rt_vars.ui16_service_a_distance = v;
+	rt_vars.ui32_service_a_distance = v;
 }
 
-void onSetConfigurationServiceHours(uint16_t v) {
-	rt_vars.ui16_service_b_hours = v;
+void onSetConfigurationServiceHours(uint32_t v) {
+	rt_vars.ui32_service_b_hours = v;
 }
 #endif
 void batteryPower(void) {
@@ -1726,4 +1747,87 @@ void pedalPower(void) {
 void onSetConfigurationBatterySOCUsedWh(uint32_t v) {
   reset_wh();
   ui_vars.ui32_wh_x10_offset = v;
+}
+
+void password_check(void) {
+	// password check
+	if((ui8_configuration_flag)&&(ui_vars.ui8_password_enabled)) {
+		switch (ui_vars.ui8_confirm_password) {
+			case LOGOUT:
+				if((ui_vars.ui8_wait_confirm_password)
+				  ||(ui_vars.ui8_password_first_time)
+				  ||(ui_vars.ui8_password_confirmed)) {
+					ui_vars.ui8_wait_confirm_password = 0;
+					ui_vars.ui8_password_first_time = 0;
+					ui_vars.ui8_password_confirmed = 0;
+					ui_vars.ui16_entered_password = 0;
+				}
+				
+				if(ui_vars.ui16_entered_password) {
+					ui_vars.ui8_confirm_password = WAIT;
+					
+				}
+				break;
+		
+			case LOGIN:
+				if((ui_vars.ui16_entered_password == ui_vars.ui16_saved_password)
+				  &&(ui_vars.ui8_password_changed)) {
+					ui_vars.ui8_password_confirmed = 1;
+					ui_vars.ui8_wait_confirm_password = 0;
+				}
+				else if((ui_vars.ui16_entered_password == DEFAULT_VALUE_PASSWORD)
+				  &&(!ui_vars.ui8_password_changed)) {
+					ui_vars.ui8_password_first_time = 1;
+					ui_vars.ui8_wait_confirm_password = 0;
+				}
+				else if((ui_vars.ui16_entered_password != ui_vars.ui16_saved_password)
+				  &&((ui_vars.ui8_password_first_time)||(ui_vars.ui8_password_confirmed))
+				  &&(!ui_vars.ui8_wait_confirm_password)) {
+					ui_vars.ui8_confirm_password = WAIT;
+				}
+				else if((ui_vars.ui16_entered_password != ui_vars.ui16_saved_password)
+				  &&(ui_vars.ui8_wait_confirm_password)) {
+					ui_vars.ui8_confirm_password = LOGOUT;
+				}
+				else {
+					ui_vars.ui8_confirm_password = LOGOUT;
+				}
+				break;
+				
+			case WAIT:
+					ui_vars.ui8_wait_confirm_password = 1;
+				break;
+				
+			case CHANGE:
+				if((ui_vars.ui16_entered_password != DEFAULT_VALUE_PASSWORD)
+				  &&((ui_vars.ui8_password_first_time)||(ui_vars.ui8_password_confirmed))) {
+					ui_vars.ui16_saved_password = ui_vars.ui16_entered_password;
+					ui_vars.ui8_confirm_password = LOGIN;
+					ui_vars.ui8_wait_confirm_password = 0;
+					ui_vars.ui8_password_first_time = 0;
+					ui_vars.ui8_password_confirmed = 1;
+					ui_vars.ui8_password_changed = 1;
+				}
+				else {
+					ui_vars.ui8_confirm_password = LOGOUT;
+				}
+				break;
+			
+			default:
+				break;
+		}
+	}
+	else {
+		ui_vars.ui16_entered_password = 0;
+		ui_vars.ui8_confirm_password = LOGOUT;
+	}
+	
+	// password reset, turn off the display within 10 seconds and reflashing firmware
+	if(ui_vars.ui8_reset_password) {
+		if(--ui8_reset_password_counter == 0)
+			ui_vars.ui8_reset_password = 0;
+	}
+	else {
+		ui8_reset_password_counter = 100;
+	}
 }

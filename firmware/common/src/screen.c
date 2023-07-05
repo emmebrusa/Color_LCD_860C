@@ -2474,6 +2474,8 @@ void screen_init(void) {
 
   update_battery_power_usage_label();
 
+  ui8_g_screen_init_flag = 1;
+	
   ui_vars.ui8_throttle_virtual = 0;
 
 #ifndef SW102
@@ -2485,6 +2487,7 @@ void screen_init(void) {
 
   ui_vars.ui16_street_mode_power_limit = ui_vars.ui8_street_mode_power_limit_div25 * 25;
   ui_vars.ui16_target_max_battery_power = ui_vars.ui8_target_max_battery_power_div25 * 25;
+  ui_vars.ui16_motor_power_limit = ui_vars.ui8_motor_power_limit_div25 * 25;
   
   if (ui_vars.ui8_street_mode_function_enabled)
   {

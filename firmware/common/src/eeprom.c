@@ -45,6 +45,7 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui32_wh_x10_100_percent = DEFAULT_VALUE_HW_X10_100_PERCENT,
   .ui8_battery_soc_enable = DEAFULT_VALUE_SHOW_NUMERIC_BATTERY_SOC,
   .ui8_battery_max_current = DEFAULT_VALUE_BATTERY_MAX_CURRENT,
+  .ui8_motor_power_limit_div25 = DEFAULT_VALUE_MOTOR_POWER_LIMIT,
   .ui8_target_max_battery_power_div25 = DEFAULT_VALUE_TARGET_MAX_BATTERY_POWER,
   .ui8_motor_max_current = DEFAULT_VALUE_MOTOR_MAX_CURRENT,
   .ui8_motor_current_min_adc = DEFAULT_VALUE_CURRENT_MIN_ADC,
@@ -381,7 +382,10 @@ const eeprom_data_t m_eeprom_data_defaults = {
   //.ui8_street_mode_enabled = DEFAULT_STREET_MODE_ENABLE,
   .ui8_street_mode_speed_limit = DEFAULT_STREET_MODE_SPEED_LIMIT,
   .ui8_street_mode_power_limit_div25 = DEFAULT_STREET_MODE_POWER_LIMIT,
-  //.ui8_street_mode_throttle_enabled = DEFAULT_STREET_MODE_THROTTLE_ENABLE,
+  .ui8_street_mode_throttle_enabled = DEFAULT_STREET_MODE_THROTTLE_ENABLE,
+  .ui8_street_mode_cruise_enabled = DEFAULT_STREET_MODE_CRUISE_ENABLE,
+  .ui8_throttle_feature_enabled = DEFAULT_VALUE_THROTTLE_FEATURE_ENABLED,
+  .ui8_cruise_feature_enabled = DEFAULT_VALUE_CRUISE_FEATURE_ENABLED,
   //.ui8_street_mode_hotkey_enabled = DEFAULT_STREET_MODE_HOTKEY_ENABLE,
   //.ui8_pedal_cadence_fast_stop = DEFAULT_PEDAL_CADENCE_FAST_STOP_ENABLE,
   .ui8_coast_brake_adc = DEFAULT_COAST_BRAKE_ADC,
@@ -406,6 +410,7 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui16_adc_pedal_torque_max = DEFAULT_TORQUE_SENSOR_ADC_MAX,
   .ui8_weight_on_pedal = DEFAULT_WEIGHT_ON_PEDAL_CALIBRATION,
   .ui16_adc_pedal_torque_with_weight = DEFAULT_TORQUE_SENSOR_ADC_WITH_WEIGHT,
+  .ui16_saved_password = DEFAULT_VALUE_PASSWORD,
 
 #ifndef SW102
   .ui8_trip_a_auto_reset = DEFAULT_VALUE_TRIP_AUTO_RESET_ENABLE,
@@ -446,41 +451,66 @@ void eeprom_init() {
 			memcpy(&m_eeprom_data, &m_eeprom_data_defaults,
 				sizeof(m_eeprom_data_defaults));
 	}
-	else if (m_eeprom_data.eeprom_version < EEPROM_MID_VERSION) {
-		m_eeprom_data.eeprom_version = EEPROM_VERSION;
-		m_eeprom_data.ui8_adc_pedal_torque_offset_adj = DEFAULT_TORQUE_SENSOR_ADC_OFFSET_ADJ;
-		m_eeprom_data.ui8_adc_pedal_torque_range_adj = DEFAULT_TORQUE_SENSOR_ADC_RANGE_ADJ;
-		m_eeprom_data.ui16_battery_voltage_calibrate_percent_x10 = DEFAULT_VALUE_BATTERY_VOLTAGE_CALIBRATE_PERCENT_X10;
-		m_eeprom_data.ui8_battery_soc_percent_calculation = DEFAULT_VALUE_BATTERY_SOC_PERCENT_CALCULATION;
-		m_eeprom_data.ui8_battery_soc_auto_reset = DEFAULT_VALUE_BATTERY_SOC_RESET;
-		m_eeprom_data.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100 = DEFAULT_VALUE_PEDAL_TORQUE_ADC_STEP_ADV_x100;
-		m_eeprom_data.ui8_adc_pedal_torque_angle_adj_index = DEFAULT_TORQUE_SENSOR_ADC_ANGLE_ADJ_INDEX;
-		m_eeprom_data.ui8_temperature_sensor_type = DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE;
+	else {
+		switch (m_eeprom_data.eeprom_version) {
+          case EEPROM_MIN_COMPAT_VERSION:
+			m_eeprom_data.ui8_screen_temperature = DEFAULT_VALUE_SCREEN_TEMPERATURE;
+			m_eeprom_data.ui8_adc_pedal_torque_offset_adj = DEFAULT_TORQUE_SENSOR_ADC_OFFSET_ADJ;
+			m_eeprom_data.ui8_adc_pedal_torque_range_adj = DEFAULT_TORQUE_SENSOR_ADC_RANGE_ADJ;
+			m_eeprom_data.ui16_battery_voltage_calibrate_percent_x10 = DEFAULT_VALUE_BATTERY_VOLTAGE_CALIBRATE_PERCENT_X10;
+			m_eeprom_data.ui8_battery_soc_percent_calculation = DEFAULT_VALUE_BATTERY_SOC_PERCENT_CALCULATION;
+			m_eeprom_data.ui8_battery_soc_auto_reset = DEFAULT_VALUE_BATTERY_SOC_RESET;
+			m_eeprom_data.ui8_pedal_torque_per_10_bit_ADC_step_adv_x100 = DEFAULT_VALUE_PEDAL_TORQUE_ADC_STEP_ADV_x100;
+			m_eeprom_data.ui8_adc_pedal_torque_angle_adj_index = DEFAULT_TORQUE_SENSOR_ADC_ANGLE_ADJ_INDEX;
+
+          case EEPROM_0x41_VERSION:
 #ifndef SW102
-		m_eeprom_data.ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET;
-		m_eeprom_data.ui16_service_a_distance = DEFAULT_VALUE_SERVICE_A_DISTANCE;
-		m_eeprom_data.ui16_service_b_hours = DEFAULT_VALUE_SERVICE_B_HOURS;
-		m_eeprom_data.ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME;
-		m_eeprom_data.ui8_service_a_distance_enable = DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE;
-		m_eeprom_data.ui8_service_b_hours_enable = DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE;
-	}
-	else if (m_eeprom_data.eeprom_version < EEPROM_VERSION) {
-		m_eeprom_data.eeprom_version = EEPROM_VERSION;
-		m_eeprom_data.ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET;
-		m_eeprom_data.ui16_service_a_distance = DEFAULT_VALUE_SERVICE_A_DISTANCE;
-		m_eeprom_data.ui16_service_b_hours = DEFAULT_VALUE_SERVICE_B_HOURS;
-		m_eeprom_data.ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME;
-		m_eeprom_data.ui8_service_a_distance_enable = DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE;
-		m_eeprom_data.ui8_service_b_hours_enable = DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE;
-		m_eeprom_data.ui8_temperature_sensor_type = DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE;
-	}
-#else
-	}
-	else if (m_eeprom_data.eeprom_version < EEPROM_VERSION) {
-		m_eeprom_data.eeprom_version = EEPROM_VERSION;
-		m_eeprom_data.ui8_temperature_sensor_type = DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE;
-	}
+			m_eeprom_data.ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET;
+			m_eeprom_data.ui16_service_a_distance = DEFAULT_VALUE_SERVICE_A_DISTANCE;
+			m_eeprom_data.ui16_service_b_hours = DEFAULT_VALUE_SERVICE_B_HOURS;
+			m_eeprom_data.ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME;
+			m_eeprom_data.ui8_service_a_distance_enable = DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE;
+			m_eeprom_data.ui8_service_b_hours_enable = DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE;
 #endif
+			m_eeprom_data.ui8_temperature_sensor_type = DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE;
+			
+          case EEPROM_0x42_VERSION:
+			// set speed limit
+			if(m_eeprom_data.ui8_street_mode_speed_limit > m_eeprom_data.ui8_wheel_max_speed)
+				m_eeprom_data.ui8_wheel_max_speed = m_eeprom_data.ui8_street_mode_speed_limit;
+			// set motor power limit
+			m_eeprom_data.ui8_motor_power_limit_div25 = DEFAULT_VALUE_MOTOR_POWER_LIMIT;
+			if(m_eeprom_data.ui8_target_max_battery_power_div25 > m_eeprom_data.ui8_motor_power_limit_div25)
+				m_eeprom_data.ui8_motor_power_limit_div25 = m_eeprom_data.ui8_target_max_battery_power_div25;
+			if(m_eeprom_data.ui8_street_mode_power_limit_div25 > m_eeprom_data.ui8_motor_power_limit_div25)
+				m_eeprom_data.ui8_motor_power_limit_div25 = m_eeprom_data.ui8_street_mode_power_limit_div25;
+			
+			m_eeprom_data.ui8_throttle_feature_enabled = DEFAULT_VALUE_THROTTLE_FEATURE_ENABLED;
+			m_eeprom_data.ui8_cruise_feature_enabled = DEFAULT_VALUE_CRUISE_FEATURE_ENABLED;
+			m_eeprom_data.ui8_street_mode_throttle_enabled = DEFAULT_STREET_MODE_THROTTLE_ENABLE;
+			m_eeprom_data.ui8_street_mode_cruise_enabled = DEFAULT_STREET_MODE_CRUISE_ENABLE;
+			
+			m_eeprom_data.ui16_saved_password = DEFAULT_VALUE_PASSWORD;
+			m_eeprom_data.ui8_bit_data_3 &= 0xFE; // .ui8_password_enabled = 0
+			m_eeprom_data.ui8_bit_data_3 &= 0x7F; // .ui8_password_changed = 0
+			m_eeprom_data.ui8_bit_data_3 &= 0xBF; // .ui8_reset_password = 0
+			m_eeprom_data.ui8_bit_data_2 &= 0xFB; // .ui8_assist_whit_error_enabled = 0
+			m_eeprom_data.ui8_bit_data_3 &= 0xDF; // .ui8_brake_input = 0
+			
+		  case EEPROM_VERSION:
+			// reset password
+			if(m_eeprom_data.ui8_bit_data_3 & 64) {
+				m_eeprom_data.ui16_saved_password = DEFAULT_VALUE_PASSWORD;
+				m_eeprom_data.ui8_bit_data_3 &= 0xFE; // .ui8_password_enabled = 0
+				m_eeprom_data.ui8_bit_data_3 &= 0x7F; // .ui8_password_changed = 0
+				m_eeprom_data.ui8_bit_data_3 &= 0xBF; // .ui8_reset_password = 0
+			}
+			
+		  default:
+			m_eeprom_data.eeprom_version = EEPROM_VERSION;
+            break;
+		}
+	}
 
 //	// Perform whatever migrations we need to update old eeprom formats
 //	if (m_eeprom_data.eeprom_version < EEPROM_VERSION) {
@@ -509,8 +539,7 @@ void eeprom_init_variables(void) {
 	ui_vars->ui8_riding_mode = m_eeprom_data.ui8_riding_mode;
 	ui_vars->ui8_assist_level = m_eeprom_data.ui8_assist_level;
 	ui_vars->ui16_wheel_perimeter = m_eeprom_data.ui16_wheel_perimeter;
-	ui_vars->ui16_wheel_max_speed_x10 =
-			m_eeprom_data.ui8_wheel_max_speed * 10;
+	ui_vars->ui8_wheel_max_speed = m_eeprom_data.ui8_wheel_max_speed;
 	//ui_vars->ui8_units_type = m_eeprom_data.ui8_units_type;
 	ui_vars->ui8_units_type = (m_eeprom_data.ui8_bit_data_1 & 1);
 	
@@ -526,7 +555,9 @@ void eeprom_init_variables(void) {
 	ui_vars->ui8_battery_soc_enable =
 			m_eeprom_data.ui8_battery_soc_enable;
 	ui_vars->ui8_time_field_enable = m_eeprom_data.ui8_time_field_enable;
-	ui_vars->ui8_pedal_cadence_fast_stop = (m_eeprom_data.ui8_bit_data_1 & 32) >> 5;
+	//ui_vars->ui8_pedal_cadence_fast_stop = (m_eeprom_data.ui8_bit_data_1 & 32) >> 5;
+	ui_vars->ui8_motor_power_limit_div25 =
+      m_eeprom_data.ui8_motor_power_limit_div25;
 	ui_vars->ui8_target_max_battery_power_div25 =
       m_eeprom_data.ui8_target_max_battery_power_div25;
 	ui_vars->ui8_battery_max_current =
@@ -545,8 +576,10 @@ void eeprom_init_variables(void) {
 	//ui_vars->ui8_motor_current_control_mode = (m_eeprom_data.ui8_bit_data_1 & 4) >> 2;
 	ui_vars->ui8_motor_assistance_startup_without_pedal_rotation =
 			(m_eeprom_data.ui8_bit_data_1 & 8) >> 3;
+	ui_vars->ui8_throttle_feature_enabled =
+			m_eeprom_data.ui8_throttle_feature_enabled;
 	ui_vars->ui8_cruise_feature_enabled =
-			(m_eeprom_data.ui8_bit_data_1 & 64) >> 6;
+			m_eeprom_data.ui8_cruise_feature_enabled;
 	//COPY_ARRAY(ui_vars, &m_eeprom_data, ui16_assist_level_factor);
 	
 	ui_vars->ui8_number_of_assist_levels =
@@ -765,11 +798,15 @@ void eeprom_init_variables(void) {
   ui_vars->ui8_street_mode_power_limit_div25 =
       m_eeprom_data.ui8_street_mode_power_limit_div25;
   ui_vars->ui8_street_mode_throttle_enabled =
-      ((m_eeprom_data.ui8_bit_data_2 & 64) >> 6) + ((m_eeprom_data.ui8_bit_data_3 & 32) >> 4);
+	  m_eeprom_data.ui8_street_mode_throttle_enabled;
   ui_vars->ui8_street_mode_hotkey_enabled =
       (m_eeprom_data.ui8_bit_data_2 & 128) >> 7;
   ui_vars->ui8_street_mode_cruise_enabled =
-      (m_eeprom_data.ui8_bit_data_3 & 1) + ((m_eeprom_data.ui8_bit_data_3 & 64) >> 5);
+	  m_eeprom_data.ui8_street_mode_cruise_enabled;
+	  
+  ui_vars->ui8_password_enabled =
+	  m_eeprom_data.ui8_bit_data_3 & 1;
+ 
 #ifndef SW102
   ui_vars->ui8_config_shortcut_key_enabled =
 	  (m_eeprom_data.ui8_bit_data_3 & 2) >> 1;
@@ -784,12 +821,13 @@ void eeprom_init_variables(void) {
 #endif
   ui_vars->ui8_startup_boost_at_zero =
 	  (m_eeprom_data.ui8_bit_data_3 & 16) >> 4;
-  ui_vars->ui8_street_mode_throttle_legal =
+  ui_vars->ui8_brake_input =
 	  (m_eeprom_data.ui8_bit_data_3 & 32) >> 5;
-  ui_vars->ui8_street_mode_cruise_legal =
-	  (m_eeprom_data.ui8_bit_data_3 & 64) >> 6;
-  //ui_vars->ui8_pedal_cadence_fast_stop =
-  //    m_eeprom_data.ui8_bit_data_3 & 1;
+  ui_vars->ui8_reset_password =
+      (m_eeprom_data.ui8_bit_data_3 & 64) >> 6;
+  ui_vars->ui8_password_changed =
+      (m_eeprom_data.ui8_bit_data_3 & 128) >> 7;
+
   ui_vars->ui8_coast_brake_adc =
       m_eeprom_data.ui8_coast_brake_adc;
   //ui_vars->ui8_adc_lights_current_offset =
@@ -834,11 +872,12 @@ void eeprom_init_variables(void) {
 	  m_eeprom_data.ui8_weight_on_pedal;
   ui_vars->ui16_adc_pedal_torque_with_weight =
 	  m_eeprom_data.ui16_adc_pedal_torque_with_weight;
+  ui_vars->ui16_saved_password = m_eeprom_data.ui16_saved_password;
   
 #ifndef SW102
-  rt_vars->ui16_service_a_distance =
+  rt_vars->ui32_service_a_distance =
     m_eeprom_data.ui16_service_a_distance;
-  rt_vars->ui16_service_b_hours =
+  rt_vars->ui32_service_b_hours =
     m_eeprom_data.ui16_service_b_hours;
   rt_vars->ui16_service_b_time =
     m_eeprom_data.ui16_service_b_time;
@@ -888,8 +927,8 @@ void eeprom_write_variables(void) {
 	  (ui_vars->ui8_coast_brake_enable << 2) |
 	  (ui_vars->ui8_motor_assistance_startup_without_pedal_rotation << 3) |
 	  (ui_vars->ui8_startup_motor_power_boost_feature_enabled << 4) |
-	  (ui_vars->ui8_pedal_cadence_fast_stop << 5) |
-	  (ui_vars->ui8_cruise_feature_enabled << 6) |
+	  // bit free for future use
+	  // bit free for future use
 	  (ui_vars->ui8_walk_assist_feature_enabled << 7));
 	
 	m_eeprom_data.ui8_bit_data_2 = (ui_vars->ui8_buttons_up_down_invert |
@@ -898,23 +937,22 @@ void eeprom_write_variables(void) {
 	  (ui_vars->ui8_street_mode_function_enabled << 3) |
 	  (ui_vars->ui8_street_mode_enabled << 4) |
 	  (ui_vars->ui8_street_mode_enabled_on_startup << 5) |
-	  ((ui_vars->ui8_street_mode_throttle_enabled & 1) << 6) |
+	  // bit free for future use
 	  (ui_vars->ui8_street_mode_hotkey_enabled << 7));
 	
-	m_eeprom_data.ui8_bit_data_3 = ((ui_vars->ui8_street_mode_cruise_enabled & 1) |
+	m_eeprom_data.ui8_bit_data_3 = (ui_vars->ui8_password_enabled |
 	  (ui_vars->ui8_config_shortcut_key_enabled << 1) |
 	  (ui_vars->ui8_field_weakening_feature_enabled << 2) |
 	  (ui_vars->ui8_startup_assist_feature_enabled << 3) |
 	  (ui_vars->ui8_startup_boost_at_zero << 4) |
-	  (ui_vars->ui8_street_mode_throttle_legal << 5) |
-	  (ui_vars->ui8_street_mode_cruise_legal << 6));
-	// bit free for future use
-	
+	  (ui_vars->ui8_brake_input << 5) |
+	  (ui_vars->ui8_reset_password << 6) |
+	  (ui_vars->ui8_password_changed << 7));
+	  
 	m_eeprom_data.ui8_riding_mode = ui_vars->ui8_riding_mode;
 	m_eeprom_data.ui8_assist_level = ui_vars->ui8_assist_level;
 	m_eeprom_data.ui16_wheel_perimeter = ui_vars->ui16_wheel_perimeter;
-	m_eeprom_data.ui8_wheel_max_speed = (uint8_t)
-			(ui_vars->ui16_wheel_max_speed_x10 / 10);
+	m_eeprom_data.ui8_wheel_max_speed = ui_vars->ui8_wheel_max_speed;
 	//m_eeprom_data.ui8_units_type = ui_vars->ui8_units_type;
 	
 #ifndef SW102
@@ -930,6 +968,8 @@ void eeprom_write_variables(void) {
 	m_eeprom_data.ui8_battery_soc_enable =
 		ui_vars->ui8_battery_soc_enable;
 	m_eeprom_data.ui8_time_field_enable = ui_vars->ui8_time_field_enable;
+	m_eeprom_data.ui8_motor_power_limit_div25 =
+		ui_vars->ui8_motor_power_limit_div25;
 	m_eeprom_data.ui8_target_max_battery_power_div25 =
 		ui_vars->ui8_target_max_battery_power_div25;
 	m_eeprom_data.ui8_battery_max_current =
@@ -1099,8 +1139,15 @@ void eeprom_write_variables(void) {
       ui_vars->ui8_street_mode_speed_limit;
   m_eeprom_data.ui8_street_mode_power_limit_div25 =
       ui_vars->ui8_street_mode_power_limit_div25;
-  //m_eeprom_data.ui8_street_mode_throttle_enabled =
-  //    ui_vars->ui8_street_mode_throttle_enabled;
+  m_eeprom_data.ui8_street_mode_cruise_enabled =
+      ui_vars->ui8_street_mode_cruise_enabled;
+  m_eeprom_data.ui8_street_mode_throttle_enabled =
+      ui_vars->ui8_street_mode_throttle_enabled;
+  m_eeprom_data.ui8_throttle_feature_enabled =
+      ui_vars->ui8_throttle_feature_enabled;
+  m_eeprom_data.ui8_cruise_feature_enabled =
+      ui_vars->ui8_cruise_feature_enabled;
+	  
   //m_eeprom_data.ui8_street_mode_hotkey_enabled =
   //    ui_vars->ui8_street_mode_hotkey_enabled;
 
@@ -1121,9 +1168,9 @@ void eeprom_write_variables(void) {
 			
 #ifndef SW102
   m_eeprom_data.ui16_service_a_distance =
-    ui_vars->ui16_service_a_distance;
+    (uint16_t)ui_vars->ui32_service_a_distance;
   m_eeprom_data.ui16_service_b_hours =
-    ui_vars->ui16_service_b_hours;
+    (uint16_t)ui_vars->ui32_service_b_hours;
   m_eeprom_data.ui16_service_b_time =
     ui_vars->ui16_service_b_time;
   m_eeprom_data.ui8_service_a_distance_enable =
@@ -1191,6 +1238,7 @@ void eeprom_write_variables(void) {
 	  ui_vars->ui8_weight_on_pedal;
   m_eeprom_data.ui16_adc_pedal_torque_with_weight =
 	  ui_vars->ui16_adc_pedal_torque_with_weight;
+  m_eeprom_data.ui16_saved_password = ui_vars->ui16_saved_password;
 	  
 	flash_write_words(&m_eeprom_data, sizeof(m_eeprom_data) / sizeof(uint32_t));
 }

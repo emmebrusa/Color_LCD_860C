@@ -17,7 +17,20 @@
 #define NOT_IN_USE							0
 #define TEMPERATURE_CONTROL					1
 #define THROTTLE_CONTROL					2
-#define LEGAL								2
+
+// throttle and cruise
+#define DISABLED							0
+#define PEDALING							1
+// throttle only
+#define WP_6KM_H_ONLY						2
+#define WP_6KM_H_AND_PEDALING				3
+#define UNCONDITIONAL						4
+// cruise only
+#define WITHOUT_PEDALING					2
+
+#define SPEED_LIMIT_WITHOUT_PEDALING		6
+#define SPEED_LIMIT_WITHOUT_PEDALING_x10	60
+#define MAX_SPEED_WITHOUT_PEDALING_x10		70
 
 // screen temperature
 #define AUTO								0
@@ -27,6 +40,16 @@
 // temperature sensor type
 #define LM35								0
 #define TMP36								1
+
+// brake input
+#define BRAKE								0
+#define TEMPERATURE							1
+
+// password
+#define LOGOUT								0
+#define LOGIN								1
+#define WAIT								2
+#define CHANGE								3
 
 // assist level number
 #define ASSIST_LEVEL_NUMBER					9
@@ -112,8 +135,8 @@ typedef struct rt_vars_struct {
 	uint32_t ui32_wh_x10_trip_a_offset;
 	uint32_t ui32_wh_x10_trip_b_offset;
 	
-	uint16_t ui16_service_a_distance;
-	uint16_t ui16_service_b_hours;
+	uint16_t ui32_service_a_distance;
+	uint16_t ui32_service_b_hours;
 	uint16_t ui16_service_b_time;
 	//uint8_t ui8_service_a_distance_enable;
 	//uint8_t ui8_service_b_hours_enable;
@@ -126,6 +149,7 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_units_type;
 	uint32_t ui32_wh_x10_offset;
 	uint32_t ui32_wh_x10_100_percent;
+	uint16_t ui16_motor_power_limit;
 	uint8_t ui8_target_max_battery_power_div25;
 	uint8_t ui8_battery_max_current;
 	uint8_t ui8_motor_max_current;
@@ -141,13 +165,12 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_motor_assistance_startup_without_pedal_rotation;
 	uint8_t ui8_assist_level_factor[4][ASSIST_LEVEL_NUMBER];
 	uint8_t ui8_walk_assist_feature_enabled;
+	uint8_t ui8_throttle_feature_enabled;
 	uint8_t ui8_cruise_feature_enabled;
 	uint8_t ui8_walk_assist_level_factor[ASSIST_LEVEL_NUMBER];
 	uint8_t ui8_startup_motor_power_boost_feature_enabled;
 	uint8_t ui8_startup_boost_at_zero;
 	uint8_t ui8_startup_assist_feature_enabled;
-	//uint8_t ui8_street_mode_throttle_legal;
-	//uint8_t ui8_street_mode_cruise_legal;
 	//uint8_t ui8_startup_motor_power_boost_always;
 	//uint8_t ui8_startup_motor_power_boost_limit_power;
 	//uint8_t ui8_startup_motor_power_boost_time;
@@ -294,8 +317,8 @@ typedef struct ui_vars_struct {
 	uint32_t ui32_wh_x10_trip_a_offset;
 	uint32_t ui32_wh_x10_trip_b_offset;
 	
-	uint16_t ui16_service_a_distance;
-	uint16_t ui16_service_b_hours;
+	uint16_t ui32_service_a_distance;
+	uint16_t ui32_service_b_hours;
 	uint16_t ui16_service_b_time;
 	uint8_t ui8_service_a_distance_enable;
 	uint8_t ui8_service_b_hours_enable;
@@ -304,12 +327,15 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_assist_level;
 	uint8_t ui8_number_of_assist_levels;
 	uint16_t ui16_wheel_perimeter;
+	uint8_t ui8_wheel_max_speed;
 	uint16_t ui16_wheel_max_speed_x10;
 	uint8_t ui8_units_type;
 	uint32_t ui32_wh_x10_offset;
 	uint32_t ui32_wh_x10_100_percent;
 	uint8_t ui8_battery_soc_enable;
 	uint8_t ui8_time_field_enable;
+	uint8_t ui8_motor_power_limit_div25;
+	uint16_t ui16_motor_power_limit;
 	uint8_t ui8_target_max_battery_power_div25;
 	uint16_t ui16_target_max_battery_power;
 	uint8_t ui8_battery_max_current;
@@ -327,13 +353,22 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_motor_assistance_startup_without_pedal_rotation;
 	uint8_t ui8_assist_level_factor[4][ASSIST_LEVEL_NUMBER];
 	uint8_t ui8_walk_assist_feature_enabled;
+	uint8_t ui8_throttle_feature_enabled;
 	uint8_t ui8_cruise_feature_enabled;
 	uint8_t ui8_walk_assist_level_factor[ASSIST_LEVEL_NUMBER];
 	uint8_t ui8_startup_motor_power_boost_feature_enabled;
 	uint8_t ui8_startup_boost_at_zero;
 	uint8_t ui8_startup_assist_feature_enabled;
-	uint8_t ui8_street_mode_throttle_legal;
-	uint8_t ui8_street_mode_cruise_legal;
+	uint8_t ui8_password_enabled;
+	uint16_t ui16_entered_password;
+	uint16_t ui16_saved_password;
+	uint8_t ui8_wait_confirm_password;
+	uint8_t ui8_password_first_time;
+	uint8_t ui8_password_changed;
+	uint8_t ui8_password_confirmed;
+	uint8_t ui8_confirm_password;
+	uint8_t ui8_reset_password;
+	uint8_t ui8_confirm_default_reset;
 	//uint8_t ui8_startup_motor_power_boost_always;
 	//uint8_t ui8_startup_motor_power_boost_limit_power;
 	//uint8_t ui8_startup_motor_power_boost_time;
@@ -384,6 +419,7 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_startup_assist;
 	//uint8_t ui8_offroad_mode;
 	uint8_t ui8_buttons_up_down_invert;
+	uint8_t ui8_brake_input;
 
 	uint8_t ui8_torque_sensor_calibration_feature_enabled;
 	//uint8_t ui8_torque_sensor_calibration_pedal_ground;
@@ -559,6 +595,8 @@ void prepare_torque_sensor_calibration_table(void);
 void reset_wh(void);
 
 extern uint8_t ui8_g_battery_soc;
+
+extern uint8_t ui8_g_screen_init_flag;
 
 extern tsdz2_firmware_version_t g_tsdz2_firmware_version;
 

@@ -16,8 +16,9 @@
 // For compatible changes, just add new fields at the end of the table (they will be inited to 0xff for old eeprom images).
 // For incompatible changes bump up EEPROM_MIN_COMPAT_VERSION and the user's EEPROM settings will be discarded.
 #define EEPROM_MIN_COMPAT_VERSION 0x40
-#define EEPROM_MID_VERSION 0x41
-#define EEPROM_VERSION 0x42
+#define EEPROM_0x41_VERSION 0x41
+#define EEPROM_0x42_VERSION 0x42
+#define EEPROM_VERSION 0x43
 
 typedef struct {
   graph_auto_max_min_t auto_max_min;
@@ -43,7 +44,7 @@ typedef struct eeprom_data {
 	uint8_t ui8_target_max_battery_power_div25;
 	uint8_t ui8_battery_max_current;
 	uint8_t ui8_motor_max_current; // CHECK
-	uint8_t ui8_motor_current_min_adc;
+	uint8_t ui8_motor_current_min_adc; // NOT USED
 	//uint8_t ui8_field_weakening;
 //	uint8_t ui8_ramp_up_amps_per_second_x10;
 	uint16_t ui16_battery_low_voltage_cut_off_x10;
@@ -216,6 +217,12 @@ typedef struct eeprom_data {
 #endif
 
 	uint8_t ui8_temperature_sensor_type;
+	uint8_t ui8_motor_power_limit_div25;
+	uint16_t ui16_saved_password;
+	uint8_t ui8_throttle_feature_enabled;
+	uint8_t ui8_cruise_feature_enabled;
+	uint8_t ui8_street_mode_throttle_enabled;
+	uint8_t ui8_street_mode_cruise_enabled;
 	
 // FIXME align to 32 bit value by end of structure and pack other fields
 } eeprom_data_t;
@@ -231,7 +238,7 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_ASSIST_LEVEL                                  0
 #define DEFAULT_VALUE_NUMBER_OF_ASSIST_LEVELS                       9
 #define DEFAULT_VALUE_WHEEL_PERIMETER                               2100 // 27.5'' wheel: 2100mm perimeter
-#define DEFAULT_VALUE_WHEEL_MAX_SPEED                               50 // 50 km/h
+#define DEFAULT_VALUE_WHEEL_MAX_SPEED                               25 // 25 km/h
 #define DEFAULT_VALUE_UNITS_TYPE                                    0 // // 0=km/h, 1=miles
 #ifndef SW102
 #define DEFAULT_VALUE_SERVICE_A_DISTANCE							0
@@ -251,12 +258,13 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_MOTOR_MAX_CURRENT                             16 // 16 amps NOT USED
 #define DEFAULT_VALUE_CURRENT_MIN_ADC                               0 // 1 unit, 0.156 A
 //#define DEFAULT_VALUE_RAMP_UP_AMPS_PER_SECOND_X10                   80 // 8.0 amps per second ramp up
-#define DEFAULT_VALUE_TARGET_MAX_BATTERY_POWER                      32 // 32 * 25 = 800, 0 is disabled
+#define DEFAULT_VALUE_MOTOR_POWER_LIMIT                             20 // 20 * 25 = 500
+#define DEFAULT_VALUE_TARGET_MAX_BATTERY_POWER                      20 // 20 * 25 = 500, 0 is disabled
 #define DEFAULT_VALUE_BATTERY_LOW_VOLTAGE_CUT_OFF_X10               420 // 52v battery, LVC = 42.0 (3.0 * 14)
 #define DEFAULT_VALUE_BATTERY_VOLTAGE_CALIBRATE_PERCENT_X10			1000 // displayed voltage 
 #define DEFAULT_VALUE_BATTERY_SOC_PERCENT_CALCULATION				1  // 0=Auto 1=Wh 2=Volts
 #define DEFAULT_VALUE_BATTERY_SOC_RESET								15 // % + or -
-#define DEFAULT_VALUE_BATTERY_PACK_RESISTANCE                       300 // 52v battery, 14S3P measured 300 milli ohms
+#define DEFAULT_VALUE_BATTERY_PACK_RESISTANCE                       240 // 52v battery, 14S3P measured 300 milli ohms
 //#define DEFAULT_VALUE_MOTOR_CURRENT_CONTROL_MODE                    0 // 0 power; 1 torque
 #define DEFAULT_VALUE_MOTOR_TYPE                                    0 // 0 = 48V
 #define DEFAULT_VALUE_MOTOR_ASSISTANCE_WITHOUT_PEDAL_ROTATION       0 // 0 to keep this feature disable
@@ -307,7 +315,7 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_9                           18
 
 #define DEFAULT_VALUE_WALK_ASSIST_FEATURE_ENABLED                   1
-#define DEFAULT_VALUE_CRUISE_FEATURE_ENABLED                   		0
+#define DEFAULT_VALUE_CRUISE_FEATURE_ENABLED	             		0
 #define DEFAULT_VALUE_WALK_ASSIST_LEVEL_FACTOR_1                    25
 #define DEFAULT_VALUE_WALK_ASSIST_LEVEL_FACTOR_2                    25
 #define DEFAULT_VALUE_WALK_ASSIST_LEVEL_FACTOR_3                    30
@@ -318,19 +326,23 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_WALK_ASSIST_LEVEL_FACTOR_8                    45
 #define DEFAULT_VALUE_WALK_ASSIST_LEVEL_FACTOR_9                    50
 
-#define DEFAULT_VALUE_STARTUP_MOTOR_POWER_BOOST_FEATURE_ENABLED     0
+#define DEFAULT_VALUE_STARTUP_MOTOR_POWER_BOOST_FEATURE_ENABLED     1
 #define DEFAULT_VALUE_STARTUP_BOOST_TORQUE_FACTOR					250
 #define DEFAULT_VALUE_STARTUP_BOOST_CADENCE_STEP					25
 #define DEFAULT_VALUE_STARTUP_BOOST_AT_ZERO							0 // 0=cadence 1=speed
-#define DEFAULT_VALUE_THROTTLE_LEGAL								0
-#define DEFAULT_VALUE_CRUISE_LEGAL									0
+#define DEFAULT_VALUE_THROTTLE_FEATURE_ENABLED						0
 #define DEFAULT_VALUE_STARTUP_ASSIST_FEATURE_ENABLED     			1
+#define DEFAULT_VALUE_PASSWORD_ENABLED                              1
+#define DEFAULT_VALUE_PASSWORD_CHANGED                              0
+#define DEFAULT_VALUE_RESET_PASSWORD	                            0
+#define DEFAULT_VALUE_PASSWORD                                      1000
 
 #define DEFAULT_VALUE_OPTIONAL_ADC_FUNCTION              			0 // 0=not used 1=temperature control 2=throttle control
 #define DEFAULT_VALUE_MOTOR_TEMPERATURE_MIN_VALUE_LIMIT             65 // 65 degrees celsius
 #define DEFAULT_VALUE_MOTOR_TEMPERATURE_MAX_VALUE_LIMIT             85 // 85 degrees celsius
 #define DEFAULT_VALUE_SCREEN_TEMPERATURE							0 // 0=AUTO 1=CELSIUS 2=FARENHEIT		
 #define DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE						0 // 0=LM35 1=TMP36
+#define DEFAULT_VALUE_BRAKE_INPUT									0 // 0=BRAKE 1=TEMPERATURE
 
 #define DEFAULT_VALUE_BATTERY_VOLTAGE_RESET_WH_COUNTER_X10          584 // 52v battery, 58.4 volts at fully charged
 #define DEFAULT_VALUE_LCD_POWER_OFF_TIME                            30 // 30 minutes, each unit 1 minute
@@ -355,8 +367,8 @@ void eeprom_init_defaults(void);
 #define DEFAULT_STREET_MODE_THROTTLE_ENABLE                         0 // disabled
 #define DEFAULT_STREET_MODE_CRUISE_ENABLE                         	0 // disabled
 #define DEFAULT_STREET_MODE_HOTKEY_ENABLE                           0 // disabled
-#define DEFAULT_PEDAL_CADENCE_FAST_STOP_ENABLE                      0 // disabled
-#define DEFAULT_COAST_BRAKE_ADC                                     30 // 15: tested by plpetrov user on 28.04.2020:
+//#define DEFAULT_PEDAL_CADENCE_FAST_STOP_ENABLE                      0 // disabled
+#define DEFAULT_COAST_BRAKE_ADC                                     15 // 15: tested by plpetrov user on 28.04.2020:
 #define DEFAULT_VALUE_FIELD_WEAKENING_FEATURE_ENABLED               1 // 1 enabled
 //#define DEFAULT_ADC_LIGHTS_CURRENT_OFFSET                           1
 #define DEFAULT_THROTTLE_VIRTUAL_STEP                               5
@@ -393,14 +405,15 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_TRIP_TIME                                      0
 #define DEFAULT_VALUE_TRIP_MAX_SPEED                                 0
 
+#define BIT_AVAILABLE												 0
 
 #define DEFAULT_BIT_DATA_1 (DEFAULT_VALUE_UNITS_TYPE | \
 (DEFAULT_VALUE_MOTOR_TYPE << 1) | \
 (DEFAULT_COAST_BRAKE_ENABLE << 2) | \
 (DEFAULT_VALUE_MOTOR_ASSISTANCE_WITHOUT_PEDAL_ROTATION << 3) | \
 (DEFAULT_VALUE_STARTUP_MOTOR_POWER_BOOST_FEATURE_ENABLED << 4) | \
-(DEFAULT_PEDAL_CADENCE_FAST_STOP_ENABLE << 5) | \
-(DEFAULT_VALUE_CRUISE_FEATURE_ENABLED << 6) | \
+(BIT_AVAILABLE << 5) | \
+(BIT_AVAILABLE << 6) | \
 (DEFAULT_VALUE_WALK_ASSIST_FEATURE_ENABLED << 7))
 
 #define DEFAULT_BIT_DATA_2 (DEFAULT_VALUE_BUTTONS_UP_DOWN_INVERT | \
@@ -409,17 +422,18 @@ void eeprom_init_defaults(void);
 (DEFAULT_STREET_MODE_FUNCTION_ENABLE << 3) | \
 (DEFAULT_STREET_MODE_ENABLE << 4) | \
 (DEFAULT_STREET_MODE_ENABLE_AT_STARTUP << 5) | \
-(DEFAULT_STREET_MODE_THROTTLE_ENABLE << 6) | \
+(BIT_AVAILABLE << 6) | \
 (DEFAULT_STREET_MODE_HOTKEY_ENABLE << 7))
 
-#define DEFAULT_BIT_DATA_3	(DEFAULT_STREET_MODE_CRUISE_ENABLE | \
+#define DEFAULT_BIT_DATA_3	(DEFAULT_VALUE_PASSWORD_ENABLED | \
 (DEFAULT_VALUE_CONFIG_SHORTCUT_KEY_ENABLED << 1) | \
 (DEFAULT_VALUE_FIELD_WEAKENING_FEATURE_ENABLED << 2) | \
 (DEFAULT_VALUE_STARTUP_ASSIST_FEATURE_ENABLED << 3) | \
 (DEFAULT_VALUE_STARTUP_BOOST_AT_ZERO << 4) | \
-(DEFAULT_VALUE_THROTTLE_LEGAL << 5) | \
-(DEFAULT_VALUE_CRUISE_LEGAL << 6))
-// bit free for future use
+(DEFAULT_VALUE_BRAKE_INPUT << 5) | \
+(DEFAULT_VALUE_RESET_PASSWORD << 6) | \
+(DEFAULT_VALUE_PASSWORD_CHANGED << 7))
+
 
 // *************************************************************************** //
 
