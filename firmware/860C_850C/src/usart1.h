@@ -10,6 +10,7 @@
 #define _USART1_H_
 
 #include "stdio.h"
+#include "stdint.h"
 
 void usart1_init(void);
 uint8_t* usart1_get_rx_buffer(void);

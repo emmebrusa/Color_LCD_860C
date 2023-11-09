@@ -11,12 +11,17 @@
 
 #include "stm32f10x_gpio.h"
 
-#ifdef DISPLAY_860C
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
 #define SYSTEM_POWER_ON_OFF__PORT                   GPIOA
 #define SYSTEM_POWER_ON_OFF__PIN                    GPIO_Pin_11
 #endif
 
-#ifdef DISPLAY_850C
+#ifdef DISPLAY_860C_V12
+#define SYSTEM_POWER_2_ON_OFF__PORT                 GPIOA
+#define SYSTEM_POWER_2_ON_OFF__PIN                  GPIO_Pin_12
+#endif
+
+#if defined(DISPLAY_850C) || defined(DISPLAY_850C_2021)
 #define SYSTEM_POWER_ON_OFF__PORT                   GPIOC
 #define SYSTEM_POWER_ON_OFF__PIN                    GPIO_Pin_1
 #endif
@@ -42,12 +47,25 @@
 #define LCD_BUS__PORT                               GPIOB
 
 #define BUTTON_UP__PORT                             GPIOC
+
+#if defined(DISPLAY_860C) || defined(DISPLAY_850C) || defined(DISPLAY_850C_2021)
 #define BUTTON_UP__PIN                              GPIO_Pin_11
+#elif DISPLAY_860C_V12
+#define BUTTON_UP__PIN                              GPIO_Pin_1
+#endif
+
 #define BUTTON_ONOFF__PORT                          GPIOC
 #define BUTTON_ONOFF__PIN                           GPIO_Pin_12
+
+#if defined(DISPLAY_860C) || defined(DISPLAY_850C) || defined(DISPLAY_850C_2021)
 #define BUTTON_DOWN__PORT                           GPIOA
 #define BUTTON_DOWN__PIN                            GPIO_Pin_15
-#ifdef DISPLAY_860C
+#elif DISPLAY_860C_V12
+#define BUTTON_DOWN__PORT                           GPIOC
+#define BUTTON_DOWN__PIN                            GPIO_Pin_0
+#endif
+
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
 #define BUTTON_M__PORT                              GPIOC
 #define BUTTON_M__PIN                               GPIO_Pin_2
 #endif

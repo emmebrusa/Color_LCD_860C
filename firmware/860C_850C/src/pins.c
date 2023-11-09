@@ -29,6 +29,13 @@ void pins_init (void)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_Init(SYSTEM_POWER_ON_OFF__PORT, &GPIO_InitStructure);
 
+#ifdef DISPLAY_860C_V12									   
+  GPIO_InitStructure.GPIO_Pin = SYSTEM_POWER_2_ON_OFF__PIN;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+  GPIO_Init(SYSTEM_POWER_2_ON_OFF__PORT, &GPIO_InitStructure);
+#endif
+
   GPIO_InitStructure.GPIO_Pin = BUTTON_ONOFF__PIN;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -44,7 +51,7 @@ void pins_init (void)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
   GPIO_Init(BUTTON_DOWN__PORT, &GPIO_InitStructure);
 
-#ifdef DISPLAY_860C
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
   GPIO_InitStructure.GPIO_Pin = BUTTON_M__PIN;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -67,11 +74,17 @@ void system_power(uint32_t ui32_state)
   if(ui32_state)
   {
     GPIO_SetBits(SYSTEM_POWER_ON_OFF__PORT, SYSTEM_POWER_ON_OFF__PIN);
+#ifdef DISPLAY_860C_V12
+    GPIO_SetBits(SYSTEM_POWER_2_ON_OFF__PORT, SYSTEM_POWER_2_ON_OFF__PIN);
+#endif
     GPIO_SetBits(USB_CHARGE__PORT, USB_CHARGE__PIN);
   }
   else
   {
     GPIO_ResetBits(SYSTEM_POWER_ON_OFF__PORT, SYSTEM_POWER_ON_OFF__PIN);
+#ifdef DISPLAY_860C_V12
+    GPIO_ResetBits(SYSTEM_POWER_2_ON_OFF__PORT, SYSTEM_POWER_2_ON_OFF__PIN);
+#endif												
     GPIO_ResetBits(USB_CHARGE__PORT, USB_CHARGE__PIN);
   }
 }

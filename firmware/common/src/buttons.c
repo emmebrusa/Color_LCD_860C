@@ -30,7 +30,7 @@ static uint32_t ui32_m_button_state_counter = 0;
 static uint32_t ui32_m_clear_event = 0;
 buttons_events_t buttons_events = 0;
 
-#if defined(DISPLAY_850C) || defined(DISPLAY_860C)
+#if defined(DISPLAY_850C) || defined(DISPLAY_850C_2021) || defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
 #include "stm32f10x.h"
 #include "stm32f10x_gpio.h"
 #include "pins.h"
@@ -61,9 +61,9 @@ uint32_t buttons_get_onoff_state(void) {
 }
 
 uint32_t buttons_get_m_state(void) {
-#ifdef DISPLAY_850C
+#if defined(DISPLAY_850C) || defined(DISPLAY_850C_2021)
 	return 0; // no M button on 850C
-#elif DISPLAY_860C
+#elif defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
   return GPIO_ReadInputDataBit(BUTTON_M__PORT, BUTTON_M__PIN) != 0 ?
       0 : 1;
 #endif

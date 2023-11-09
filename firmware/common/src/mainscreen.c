@@ -324,9 +324,9 @@ Field bootHeading = FIELD_DRAWTEXT_RO(_S("OpenSource EBike", "OS-EBike")),
    bootURL_1 = FIELD_DRAWTEXT_RO(_S("www.github.com/", "Keep pedal")),
    bootURL_2 = FIELD_DRAWTEXT_RO(_S("OpenSource-EBike-Firmware", "free")),
 
-#ifdef DISPLAY_850C
+#if defined(DISPLAY_850C) || defined(DISPLAY_850C_2021)
    bootFirmwareVersion = FIELD_DRAWTEXT_RO("850C firmware version:"),
-#elif DISPLAY_860C
+#elif defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
    bootFirmwareVersion = FIELD_DRAWTEXT_RO("860C firmware version:"),
 #endif
 
@@ -722,11 +722,20 @@ void wheel_speed(void)
   ui8_m_wheel_speed_decimal = (uint8_t) (ui16_wheel_speed % 10);
 
 #ifdef SW102
-  // if we are inside the timeout, override the wheel speed value so assist level is shown there
-  if (m_assist_level_change_timeout > 0)
+// lookup table to give correct assist level display when set for Miles 
+  static const uint8_t assistLookup[] = {0,2,4,5,7,9,10,12,13,15,17,18,20,21,23,25,26,28,29,31,33};
+// if we are inside the timeout, override the wheel speed value so assist level is shown there  
+  if (m_assist_level_change_timeout > 0) 
   {
     m_assist_level_change_timeout--;
-    ui8_m_wheel_speed_integer = ui_vars.ui8_assist_level;
+    if (screenConvertMiles)
+     {
+       ui8_m_wheel_speed_integer = assistLookup[ui_vars.ui8_assist_level];
+     }
+    else
+     {
+       ui8_m_wheel_speed_integer = ui_vars.ui8_assist_level;
+     }
   }
 #endif
 
@@ -820,6 +829,9 @@ void screen_clock(void) {
     lcd_main_screen();
 #ifndef SW102
     clock_time();
+#endif
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+	auto_on_off_lights();
 #endif
     DisplayResetToDefaults();
     TripMemoriesReset();
@@ -1831,3 +1843,28 @@ void password_check(void) {
 		ui8_reset_password_counter = 100;
 	}
 }
+
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+// Automatic on/off lights with the display's light sensor
+void auto_on_off_lights(void) {
+#define ADC_LIGHT_SENSOR_LIGHT_DIV100				11 // adc value 1150
+#define ADC_LIGHT_SENSOR_DARK_DIV100				41 // adc value 4090
+#define ADC_LIGHT_SENSOR_SCALE_DIV100	(uint8_t)(ADC_LIGHT_SENSOR_DARK_DIV100 - ADC_LIGHT_SENSOR_LIGHT_DIV100)
+#define ADC_LIGHT_SENSOR_HYSTERESIS					100
+
+	if (ui_vars.ui8_light_sensor_enabled) {
+		uint16_t ui16_light_sensor_threshold =
+			(ui_vars.ui8_light_sensor_sensitivity * ADC_LIGHT_SENSOR_SCALE_DIV100)
+			+ (ADC_LIGHT_SENSOR_LIGHT_DIV100 * 100);
+		
+		if ((ui16_light_sensor_threshold - ADC_LIGHT_SENSOR_HYSTERESIS) <= adc_light_sensor_get()) {
+			ui_vars.ui8_lights = 1; // dark
+		}
+		else if ((ui16_light_sensor_threshold + ADC_LIGHT_SENSOR_HYSTERESIS) >= adc_light_sensor_get()) {
+			ui_vars.ui8_lights = 0; // light
+		}
+		
+		set_lcd_backlight();
+	}
+}
+#endif

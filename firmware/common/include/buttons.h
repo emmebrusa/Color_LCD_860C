@@ -8,6 +8,7 @@
 
 #ifndef _BUTTON_H_
 #define _BUTTON_H_
+#include "stdint.h"
 
 typedef enum {
 	ONOFF_CLICK = 1,

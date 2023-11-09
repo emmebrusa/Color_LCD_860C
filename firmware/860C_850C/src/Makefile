@@ -27,8 +27,20 @@ ifeq ($(DISPLAY_VERSION), 850C_BOOTLOADER)
   DISPLAY_VERSION_DEFINED = yes
 endif
 
+ifeq ($(DISPLAY_VERSION), 850C_2021_BOOTLOADER)
+  CFLAGS += -DDISPLAY_850C_2021
+  BOOTLOADER = yes
+  DISPLAY_VERSION_DEFINED = yes
+endif
+
 ifeq ($(DISPLAY_VERSION), 860C_BOOTLOADER)
   CFLAGS += -DDISPLAY_860C
+  BOOTLOADER = yes
+  DISPLAY_VERSION_DEFINED = yes
+endif
+
+ifeq ($(DISPLAY_VERSION), 860C_V12_BOOTLOADER)
+  CFLAGS += -DDISPLAY_860C_V12
   BOOTLOADER = yes
   DISPLAY_VERSION_DEFINED = yes
 endif
@@ -83,6 +95,7 @@ CFLAGS += -fno-builtin
 CFLAGS += -std=c99 --specs=nano.specs --specs=nosys.specs -Wall  -I../../common/include
 
 LFLAGS  += -Tstm32_flash.ld -L/usr/lib/gcc/arm-none-eabi/4.9.3/armv7-m -lgcc -lm -nostartfiles -lnosys -mcpu=cortex-m3 -mthumb -Wl,--gc-sections
+
 
 LFLAGS += --specs=nano.specs --specs=nosys.specs # to use newlib nano
 LFLAGS += -Xlinker -Map=main.map

@@ -251,10 +251,12 @@ static Field startupPowerMenus[] =
 	FIELD_EDITABLE_UINT("Boost cadence step", &ui_vars.ui8_startup_boost_cadence_step, "", 10, 50, .div_digits = 0),
 	FIELD_EDITABLE_ENUM("Boost at zero", &ui_vars.ui8_startup_boost_at_zero, "cadence", "speed"),
 	FIELD_EDITABLE_ENUM("Startup assist", &ui_vars.ui8_startup_assist_feature_enabled, "disable", "enable"),
+	FIELD_EDITABLE_ENUM("Smooth start", &ui_vars.ui8_smooth_start_enabled, "disable", "enable"),
 #else
 	FIELD_EDITABLE_UINT("Boost fact", &ui_vars.ui16_startup_boost_torque_factor, "%", 1, 500, .div_digits = 0),
 	FIELD_EDITABLE_UINT("Boost step", &ui_vars.ui8_startup_boost_cadence_step, "", 10, 50, .div_digits = 0),
 	FIELD_EDITABLE_ENUM("Boost zero", &ui_vars.ui8_startup_boost_at_zero, "cadence", "speed"),
+	FIELD_EDITABLE_ENUM("Smooth sta", &ui_vars.ui8_smooth_start_enabled, "disable", "enable"),
 #endif
 	FIELD_END };
 
@@ -315,11 +317,16 @@ static Field displayMenus[] =
 	FIELD_EDITABLE_ENUM("Reset def", &ui8_g_configuration_display_reset_to_defaults, "no", "yes"),
 	FIELD_EDITABLE_ENUM("Confirm", &ui_vars.ui8_confirm_default_reset, "no", "yes"),
 #endif
+	FIELD_READONLY_UINT(_S("OSF motor     v20.1C", "Mot v20.1C"), &g_tsdz2_firmware_version.patch, "", false, .div_digits = 1),
 	FIELD_END };
 
 	
 static Field variousMenus[] =
 {
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+	FIELD_EDITABLE_ENUM("Light sensor", &ui_vars.ui8_light_sensor_enabled, "disable", "enable"),
+	FIELD_EDITABLE_UINT("Light sensitivity %", &ui_vars.ui8_light_sensor_sensitivity, "", 1, 100),
+#endif
 #ifndef SW102
 	FIELD_EDITABLE_UINT("Lights configuration", &ui_vars.ui8_lights_configuration, "", 0, 8),
     FIELD_EDITABLE_UINT("Virtual throttle step", &ui_vars.ui8_throttle_virtual_step, "", 1, 100),
@@ -333,6 +340,7 @@ static Field variousMenus[] =
     FIELD_EDITABLE_UINT("V thr step", &ui_vars.ui8_throttle_virtual_step, "", 1, 100),
     FIELD_EDITABLE_UINT("Odometer", &ui_vars.ui32_odometer_x10, "km", 0, UINT32_MAX, .div_digits = 1, .inc_step = 100, .onSetEditable = onSetConfigurationWheelOdometer),
 #endif
+	FIELD_READONLY_UINT(_S("OSF motor     v20.1C", "Mot v20.1C"), &g_tsdz2_firmware_version.patch, "", false, .div_digits = 1),
 	FIELD_END };
 
 #ifndef SW102

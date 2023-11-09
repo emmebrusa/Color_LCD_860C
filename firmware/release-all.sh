@@ -36,11 +36,23 @@ rm -R ../common/src
 make -f Makefile VERSION=$VERSION DISPLAY_VERSION="850C_BOOTLOADER"
 cp main.bin $RELEASE_FOLDER/850C_v$VERSION-bootloader.bin
 
+# version 850C_2021 bootloader
+make -f Makefile clean
+rm -R ../common/src
+make -f Makefile VERSION=$VERSION DISPLAY_VERSION="850C_2021_BOOTLOADER"
+cp main.bin $RELEASE_FOLDER/850C_2021-v$VERSION-bootloader.bin
+
 # version 860C bootloader
 make -f Makefile clean
 rm -R ../common/src
 make -f Makefile VERSION=$VERSION DISPLAY_VERSION="860C_BOOTLOADER"
 cp main.bin $RELEASE_FOLDER/860C_v$VERSION-bootloader.bin
+
+# version 860C_V1.2 bootloader
+make -f Makefile clean
+rm -R ../common/src
+make -f Makefile VERSION=$VERSION DISPLAY_VERSION="860C_V12_BOOTLOADER"
+cp main.bin $RELEASE_FOLDER/860C_V12-v$VERSION-bootloader.bin
 cd ../..
 
 echo 

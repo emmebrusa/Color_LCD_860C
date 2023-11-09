@@ -8,11 +8,11 @@
 VERSION_NUM := 25
 
 # This is the user visible string for the version
-VERSION_STRING := 0.20.1C-4.3
+VERSION_STRING := 0.20.1C-4.4
 
 # This is the expected version of the motor firmware. Display will stop to work with correct TSDZ2 firmware version
 TSDZ2_FIRMWARE_MAJOR := 0
 TSDZ2_FIRMWARE_MINOR := 21
-TSDZ2_FIRMWARE_PATCH := 43
+TSDZ2_FIRMWARE_PATCH := 44
 
 CFLAGS += -DVERSION_STRING=\"$(VERSION_STRING)\" -DTSDZ2_FIRMWARE_MAJOR=\"$(TSDZ2_FIRMWARE_MAJOR)\" -DTSDZ2_FIRMWARE_MINOR=\"$(TSDZ2_FIRMWARE_MINOR)\" -DTSDZ2_FIRMWARE_PATCH=\"$(TSDZ2_FIRMWARE_PATCH)\"

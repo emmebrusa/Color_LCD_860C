@@ -585,10 +585,10 @@ extern volatile bool g_graphs_ui_update[3];
 #define _S(longstr, shortstr) shortstr
 #endif
 
-#if defined(SW102) || defined(DISPLAY_860C)
+#if defined(SW102) || defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
   #ifdef SW102
     #define SCREENFN_FORCE_LABELS buttons_get_m_state()
-  #elif DISPLAY_860C
+  #elif defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
     #define SCREENFN_FORCE_LABELS false
   #endif
   #define SCREENCLICK_START_EDIT M_CLICK
@@ -601,7 +601,7 @@ extern volatile bool g_graphs_ui_update[3];
   #define SCREENCLICK_ALTERNATE_FIELD_START ONOFFUP_LONG_CLICK
   #define SCREENCLICK_ALTERNATE_FIELD_STOP ONOFF_LONG_CLICK
   #define SCREENCLICK_STREET_MODE ONOFFDOWN_LONG_CLICK
-#elif DISPLAY_850C
+#elif defined(DISPLAY_850C) || defined(DISPLAY_850C_2021)
   #define SCREENFN_FORCE_LABELS false
   #define SCREENCLICK_START_EDIT ONOFF_CLICK
   #define SCREENCLICK_STOP_EDIT ONOFF_CLICK

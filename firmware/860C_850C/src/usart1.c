@@ -17,6 +17,7 @@
 #include "usart1.h"
 #include "main.h"
 #include "uart.h"
+#include "stdint.h"
 
 uint8_t ui8_rx_buffer[UART_NUMBER_DATA_BYTES_TO_RECEIVE];
 volatile uint8_t ui8_received_package_flag = 0;

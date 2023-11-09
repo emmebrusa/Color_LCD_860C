@@ -118,6 +118,10 @@ void showNextScreen();
 void main_idle(); // call every 20ms
 void setWarning(ColorOp color, const char *str);
 
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+void auto_on_off_lights(void);
+#endif
+
 /// set to true if this boot was caused because we had a watchdog failure, used to show user the problem in the fault line
 extern bool wd_failure_detected;
 

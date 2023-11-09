@@ -8,6 +8,7 @@
 
 #ifndef TIMERS_H_
 #define TIMERS_H_
+#include "stdint.h"
 
 void systick_init (void);
 
@@ -18,3 +19,5 @@ void Display850C_rt_processing_stop(void);
 void Display850C_rt_processing_start(void);
 
 #endif /* TIMERS_H_ */
+
+

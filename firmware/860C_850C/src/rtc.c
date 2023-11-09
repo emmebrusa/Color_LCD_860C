@@ -11,7 +11,7 @@
 #include "stm32f10x_bkp.h"
 #include "rtc.h"
 
-#define SECONDS_IN_DAY 86399
+#define SECONDS_IN_DAY 86400
 #define CONFIGURATION_DONE 0xAAAA
 #define CONFIGURATION_RESET 0x0000
 

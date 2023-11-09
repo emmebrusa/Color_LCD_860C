@@ -1,199 +1,89 @@
+TSDZ2 Open Source Firmware v20.1C.4 update 4 for 860C display
+  1 - Support new display 860C V1.2 April 2023 (by SykloFR).
+  2 - Auto on/off lights with the display's light sensor (860c only).
+  3 - Fixed (maybe) crash in configuration menus navigation.
+  4 - Fixed stuck cursor in configuration menus.
+  5 - Fixed ERPS motor graph.
+  6 - Fixed fahrenheit conversion in Temperature graph.
+  7 - Fixed speed field display problem.
+  8 - Modified display/motor compatibility check.
+  9 - Copied from casainho version the solution of other bugs.
 
-Color LCD 860C display for TSDZ2 Open Source Firmware v20.1C.4
+TSDZ2 Open Source Firmware v20.1C.4 update 3 for 860C display
+  1 - Anti-tampering measure.
+      Added password to parameters regarding speed limit, motor power, use of throttle and cruise.
+  2 - Startup assist. Added speed limit to 6 km/h.
+  3 - Choice of temperature sensor, LM35 or TMP36.
+  4 - Choice of brake input, brake sensors or on/off thermostat (NO max 85°C).
+  5 - Choosing how to use the throttle.
+  6 - Choosing how to use the cruise.
+  7 - Added motor overcurrent check (by mspider65), e7 Overcurrent error.
+  8 - Added throttle input check on power up, e5 Throttle fault.
 
-Assistance mode available
-	Power assist
-	Torque assist
-	Cadence assist
-	eMTB assist
-	Hybrid assist
-The choice of assistance mode is in the main screen.
-At level 0, ON/OFF button to view the current mode, UP/DOWN button to change, ON/OFF button to confirm.
+TSDZ2 Open Source Firmware v20.1C.4 update 2 for 860C display
+  1 - Improved Walk assist speed adjustment.
+  2 - Added legal throttle, only works when pedaling, in street mode.
+  3 - Added legal cruise, only works when pedaling, in street mode.
+  4 - Added full battery charge cycles counter.
+  5 - Added distance and hour counters, for maintenance warning.
 
-Display Menus (* new items)
+TSDZ2 Open Source Firmware v20.1C.4 update 1 for 860C display
+  1 - Fixed "Startup assist" feature.
+  2 - Assist without pedaling, can also be activated with torque offset < 20.
+  3 - Disabled error E08 speed sensor failure, in Walk assist mode.
+  4 - Fixed "BRAKE" status message problem.
+  5 - Fixed problem with setting the odometer in miles.
 
-  Trip memories
-	A auto reset
-	A auto reset hours
-	B auto reset
-	B auto reset hours
-	Reset trip A
-	Reset trip B
+TSDZ2 Open Source Firmware v20.1C.4 for 860C display
+  1 - Improved torque sensor calibration.
+  2 - Added adjustment of the adc offset of the pedal torque.
+  3 - Added adjustment of the adc range of the pedal torque.
+  4 - Added adjustment of the adc angle of the pedal torque.
+  5 - Added choice Startup boost mode, at zero cadence or at zero speed.
+  6 - Added "Walk Assist" speed settings, one for each level.
+  7 - Improved progressivity in "Cadence Assist" mode.
+  8 - Added choice of soc % calculation mode.
+  9 - Added voltage calibration to display.
+ 10 - Modified standing start, softer.
+ 11 - Fixed an overflow issue in power assist mode.
+ 12 - Fix of the calculation of human power.
+ 13 - Changed "dead time" value to 2.0 us.
 
-  *Bike
-	Max speed
-	Circumference
-	Max power limit
-	Assist with error
-	Throttle
-	Cruise
-	Password enable (no / yes)
-	Password
-	Confirm
-	Reset
+TSDZ2 Open Source Firmware v20.1C.3-NEW for 860C display
+  1 - Added "Startup assist", to start from a standstill on difficult climbs.
+  2 - Improved cadence assist mode.
+  3 - Added new features on the display.
 
-  Battery
-	Max current
-	Low cut-off
-	*Voltage cal %
-	Resistance
-	Voltage est
-	Resistance est
-	Power loss est
+TSDZ2 Open Source Firmware v20.1C.3 for 860C display
+  1 - Updated to v13 version of mspider65 (but with 19KHz PWM frequency)
+  2 - Improved motor efficiency with high power (by mspider65)
 
-  SOC
-	Text
-	*Calculation
-	Reset at voltage
-	Battery total Wh
-	Used Wh
-	*Manual reset
-	*Auto reset %
-	*Charge cycles
+TSDZ2 Open Source Firmware v20.1C.2 for 860C display
+  1 - Updated to v12 version of mspider65 (Hall sensor calibration missing)
+  2 - Improved the problem of delay in restarting with bike in motion (from mspider65 v12)
+  3 - Improved standing start response.
+  4 - Decreased eMTB torque offset, it was too sensitive at the start.
+  5 - Added "Motor fast stop" for a quick stop of the motor.
+  6 - Added "Motor deceleration" adjustable 0-100%, alternative to "Motor fast stop".
+  7 - Speed sensor error threshold time increased (E08).
+  8 - Added enable / disable "Field Weakening".
+  9 - PWM display in percentage 0-100%
+ 10 - Added to 860C, Motor power threshold (auto / manual) for field and graph.
 
-  Motor
-	Motor voltage
-	*Max motor power
-	*Motor acceleration
-	*Motor deceleration
-	*Field weakening
+TSDZ2 Open Source Firmware v20.1C.1 for 860C display
+  1 - temperature problem fixed.
+  2 - Torque sensor error threshold changed (E02).
 
-  Torque sensor
-	Assist w/o pedal
-	Torque ADC threshold
-	Coast brake
-	Coast brake ADC
-	Calibration
-	*Torque adc step
-	*Torque adc step adv
-	*Torque offset adj
-	*Torque range adj
-	*Torque angle adj
-	*Torque adc offset
-	*Torque adc max
-	*Weight on pedal
-	*Torque adc on weight
-	*ADC torque step calc
-	*Default weight
-
-  Assist levels
-	*Power assist
-		*Level 1
-		*Level x
-	*Torque assist
-		*Level 1
-		*Level x
-	*Cadence assist
-		*Level 1
-		*Level x
-	*eMTB assist
-		*Level 1
-		*Level x
-	Assistance values for all modes from 1 to 254, for eMTB from 1 to 20.
-
-  Walk assist
-	*Speed 1
-	*Speed x
-	*Cruise feature
-
-  Startup boost
-	*Boost torque factor
-	*Boost cadence step
-	*Boost at zero (cadence/speed)
-
-  Motor temperature
-	Feature
-	Min limit
-	Max limit
-	*Units
-	*Sensor type
-	*Brake
-
-  Street mode
-	Enable Mode
-	Enable at startup
-	Speed limit
-	Motor power limit
-	*Throttle
-	*Cruise
-	Hotkey enable
-
-  Various
-	*Lights configuration
-	*Assist with error
-	Virtual throttle step
-	Odometer
-	*A service
-	*A service distance
-	*B service
-	*B service hours
-
-  Display
-	Clock field
-	Clock hours
-	Clock minutes
-	Brightness on
-	Brightness off
-	Buttons invert
-	*Config shortcut key
-	Auto power off
-	Units
-	LCD type
-	Reset to defaults
-
-  Technical (view only)
-	ADC battery current
-	ADC throttle sensor
-	Throttle sensor
-	ADC torque sensor
-	*ADC torque delta
-	*ADC torque boost
-	Pedal cadence
-	PWM duty-cycle
-	Motor speed
-	Motor FOC
-	Hall sensors
-
-Boot msg:
-  Keep pedals and brakes free
-  Wait TSDZ2
-  SIMULATING TSDZ2!
-  Error brakes or comms
-  Error RX line
-  TSDZ2 firmware error
-
-System msg:
-  Error set config
-  Motor init
-  Report Bug!
-
-Warning msg
-  Temp Warning
-  Temp Shutdown
-  Service A
-  Service B
-
-Error msg:
-  e 1 Motor not init
-  e 2 Torque Fault
-  e 3 Cadence Fault
-  e 4 Motor Blocked
-  e 5 Throttle Fault
-  e 6 Comms Fault
-  e 7 Overcurrent
-  e 8 Speed Fault
-
-
-Changed files 860C
-  configscreen.c
-  eeprom.c
-  mainscreen.c
-  state.c
-  screen.c
-  configscreen.h
-  eeprom.h
-  mainscreen.h
-  state.h
-  screen.h
-  Makefile.common
+TSDZ2 Open Source Firmware v20.1C for 860C display
+Motor changes
+  1 - Added field weakening function to increase the motor speed (by mspider65).
+  2 - Added other optimizations to motor control, torque sensor and cadence sensor (by mspider65).
+  3 - Added startup boost function in POWER assist mode, enable/disable and parameters at display.
+  4 - Added HYBRID assist mode, TORQUE + POWER, can be set on the display.
+  5 - Improved "Start-up without pedal rotation" function.
+  6 - Added a filter to the speed sensor to avoid problems of adjusting the distance from the magnet.
+  7 - Added error E03 cadence sensor failure.
+  8 - Added error E04 torque sensor failure.
+  9 - Added error E08 due to speed sensor failure or missing magnet.
+ 10 - Added "Assist with sensors error" function, to force assistance with sensors problem.
 
