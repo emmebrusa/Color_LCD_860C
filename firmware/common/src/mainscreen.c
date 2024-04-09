@@ -38,7 +38,7 @@ static uint8_t ui8_set_riding_mode = 0; // 0=disabled, 1=enabled
 static uint8_t ui8_configuration_flag = 0;
 static uint8_t ui8_reset_password_counter = 100;
 volatile uint8_t ui8_display_ready_counter = 60;
-volatile uint8_t ui8_voltage_ready_counter = 120;
+volatile uint8_t ui8_voltage_ready_counter = 60;
 volatile uint8_t ui8_battery_soc_used[100] = { 1, 1, 2, 3, 4, 5, 6, 8, 10, 12, 13, 15, 17, 19, 21, 23, 25, 26, 28,
 	29, 31, 33, 34, 36, 38, 39, 41, 42, 44, 46, 47, 49, 51, 52, 53, 54, 55, 57, 58, 59, 61, 62, 63, 65, 66,	67,
 	69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 85, 86, 87, 87, 88, 88, 89, 89, 90, 90,
@@ -237,7 +237,7 @@ Field humanPowerGraph = FIELD_GRAPH(&humanPowerFieldGraph, .min_threshold = -1, 
 Field batteryPowerGraph = FIELD_GRAPH(&batteryPowerFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsBatteryPower]);
 Field batteryPowerUsageGraph = FIELD_GRAPH(&batteryPowerUsageFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsBatteryPowerUsage]);
 Field batteryVoltageGraph = FIELD_GRAPH(&batteryVoltageFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsBatteryVoltage]);
-Field batteryCurrentGraph = FIELD_GRAPH(&batteryCurrentFieldGraph, .filter = FilterSquare, .min_threshold = -1, .graph_vars = &g_graphVars[VarsBatteryCurrent]);
+Field batteryCurrentGraph = FIELD_GRAPH(&batteryCurrentFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsBatteryCurrent]);
 Field motorCurrentGraph = FIELD_GRAPH(&motorCurrentFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsMotorCurrent]);
 Field batterySOCGraph = FIELD_GRAPH(&batterySOCFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsBatterySOC]);
 Field motorTempGraph = FIELD_GRAPH(&motorTempFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsMotorTemp]);
@@ -326,7 +326,7 @@ Field bootHeading = FIELD_DRAWTEXT_RO(_S("OpenSource EBike", "OS-EBike")),
 
 #if defined(DISPLAY_850C) || defined(DISPLAY_850C_2021)
    bootFirmwareVersion = FIELD_DRAWTEXT_RO("850C firmware version:"),
-#elif defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#elif defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
    bootFirmwareVersion = FIELD_DRAWTEXT_RO("860C firmware version:"),
 #endif
 
@@ -441,7 +441,8 @@ Screen bootScreen = {
 
 // Allow common operations (like walk assist and headlights) button presses to work on any page
 bool anyscreen_onpress(buttons_events_t events) {
-  if ((events & DOWN_LONG_CLICK) && ui_vars.ui8_walk_assist_feature_enabled) {
+  if ((events & DOWN_LONG_CLICK)
+	&& ((ui_vars.ui8_walk_assist_feature_enabled)||(ui_vars.ui8_cruise_feature_enabled))) {
       ui_vars.ui8_walk_assist = 1;
       return true;
   }
@@ -830,7 +831,7 @@ void screen_clock(void) {
 #ifndef SW102
     clock_time();
 #endif
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 	auto_on_off_lights();
 #endif
     DisplayResetToDefaults();
@@ -1070,9 +1071,9 @@ void thresholds(void) {
 
   if (*motorFOCField.rw->editable.number.auto_thresholds == FIELD_THRESHOLD_AUTO) {
     motorFOCField.rw->editable.number.error_threshold =
-        motorFOCFieldGraph.rw->editable.number.error_threshold = 8;
+        motorFOCFieldGraph.rw->editable.number.error_threshold = 12;
     motorFOCField.rw->editable.number.warn_threshold =
-        motorFOCFieldGraph.rw->editable.number.warn_threshold = 6; // -20%
+        motorFOCFieldGraph.rw->editable.number.warn_threshold = 8; // -20%
   } else if (*motorFOCField.rw->editable.number.auto_thresholds == FIELD_THRESHOLD_MANUAL) {
     motorFOCField.rw->editable.number.error_threshold =
         motorFOCFieldGraph.rw->editable.number.error_threshold = *motorFOCField.rw->editable.number.config_error_threshold;
@@ -1137,9 +1138,9 @@ void setWarning(ColorOp color, const char *str) {
 }
 
 #ifndef SW102
-static const char *motorErrors[] = { "None", "Motor not init", "Torque Fault", "Cadence Fault", "Motor Blocked", "Throttle Fault", "Comms", "Overcurrent", "Speed Fault"};
+static const char *motorErrors[] = { "None", "Motor not init", "Torque Fault", "Cadence Fault", "Motor Blocked", "Throttle Fault", "Fatal Error", "Overcurrent", "Speed Fault"};
 #else
-static const char *motorErrors[] = { "None", "Mot no ini", "Torq Fault", "CadenFault", "MotBlocked", "Thro Fault", "Comms", "Overcurren", "SpeedFault"};
+static const char *motorErrors[] = { "None", "Mot no ini", "Torq Fault", "CadenFault", "MotBlocked", "Thro Fault", "FatalError", "Overcurren", "SpeedFault"};
 #endif
 
 void warnings(void) {
@@ -1245,14 +1246,17 @@ void warnings(void) {
 		setWarning(ColorNormal, "BRAKE");
 		return;
 	}
-	else if((ui_vars.ui8_startup_assist)&&(ui_vars.ui8_assist_level)) {
+	else if((ui_vars.ui8_startup_assist_feature_enabled)
+	  &&(ui_vars.ui8_startup_assist)&&(ui_vars.ui8_assist_level)) {
 		setWarning(ColorNormal, "STARTUP");
 		return;
 	}
 	else if((ui_vars.ui8_walk_assist)&&(ui_vars.ui8_assist_level)) {
-		if(ui_vars.ui16_wheel_speed_x10 <= WALK_ASSIST_THRESHOLD_SPEED_X10)
+		if((ui_vars.ui8_walk_assist_feature_enabled)
+		  &&(ui_vars.ui16_wheel_speed_x10 <= WALK_ASSIST_THRESHOLD_SPEED_X10))
 			setWarning(ColorNormal, "WALK");
-		else if(ui_vars.ui16_wheel_speed_x10 >= CRUISE_THRESHOLD_SPEED_X10)
+		else if((ui_vars.ui8_cruise_feature_enabled)
+		  &&(ui_vars.ui16_wheel_speed_x10 >= CRUISE_THRESHOLD_SPEED_X10))
 			setWarning(ColorNormal, "CRUISE");
 		else
 			setWarning(ColorNormal, "");
@@ -1326,7 +1330,7 @@ void time(void) {
 
 void walk_assist_state(void) {
 // kevinh - note on the sw102 we show WALK in the box normally used for BRAKE display - the display code is handled there now
-  if (ui_vars.ui8_walk_assist_feature_enabled) {
+  if ((ui_vars.ui8_walk_assist_feature_enabled)||(ui_vars.ui8_cruise_feature_enabled)) {
     // if down button is still pressed
     if (ui_vars.ui8_walk_assist && buttons_get_down_state()) {
       ui8_walk_assist_timeout = 4; // 0.4 seconds
@@ -1559,13 +1563,13 @@ void BatterySOCReset(void) {
 			
 			ui_vars.ui32_wh_x10_offset = (ui_vars.ui32_wh_x10_100_percent
 				* ui8_battery_soc_used[ui8_battery_soc_index]) / 100;
-#ifndef SW102
+//#ifndef SW102
 			// reset total Wh and charge cycles if battery capacity = 0
 			if(!rt_vars.ui32_wh_x10_100_percent) {
 				ui_vars.ui32_wh_x10_total_offset = 0;
 				rt_vars.ui16_battery_charge_cycles_x10 = 0;
 			}
-			
+#ifndef SW102
 			// reset trip Wh
 			ui_vars.ui32_wh_x10_trip_a_offset = ui_vars.ui32_wh_x10_trip_a;
 			ui32_wh_x10_reset_trip_a = 0;
@@ -1844,23 +1848,24 @@ void password_check(void) {
 	}
 }
 
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 // Automatic on/off lights with the display's light sensor
 void auto_on_off_lights(void) {
 #define ADC_LIGHT_SENSOR_LIGHT_DIV100				11 // adc value 1150
 #define ADC_LIGHT_SENSOR_DARK_DIV100				41 // adc value 4090
 #define ADC_LIGHT_SENSOR_SCALE_DIV100	(uint8_t)(ADC_LIGHT_SENSOR_DARK_DIV100 - ADC_LIGHT_SENSOR_LIGHT_DIV100)
-#define ADC_LIGHT_SENSOR_HYSTERESIS					100
-
+	
 	if (ui_vars.ui8_light_sensor_enabled) {
 		uint16_t ui16_light_sensor_threshold =
 			(ui_vars.ui8_light_sensor_sensitivity * ADC_LIGHT_SENSOR_SCALE_DIV100)
 			+ (ADC_LIGHT_SENSOR_LIGHT_DIV100 * 100);
 		
-		if ((ui16_light_sensor_threshold - ADC_LIGHT_SENSOR_HYSTERESIS) <= adc_light_sensor_get()) {
+		uint16_t ui16_temp = (uint16_t) ui_vars.ui8_light_sensor_hysteresis << 5;
+		
+		if ((ui16_light_sensor_threshold - ui16_temp) <= adc_light_sensor_get()) {
 			ui_vars.ui8_lights = 1; // dark
 		}
-		else if ((ui16_light_sensor_threshold + ADC_LIGHT_SENSOR_HYSTERESIS) >= adc_light_sensor_get()) {
+		else if ((ui16_light_sensor_threshold + ui16_temp) >= adc_light_sensor_get()) {
 			ui_vars.ui8_lights = 0; // light
 		}
 		

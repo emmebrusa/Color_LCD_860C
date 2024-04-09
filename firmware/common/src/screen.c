@@ -359,10 +359,11 @@ const bool renderLayouts(FieldLayout *layouts, bool forceRender) {
 
 			// if user specified width in terms of characters, change it to pixels
 			if (layout->width < 0) {
-			  if (field->variant != FieldCustom)
+			  if (field->variant != FieldCustom) {
 			    assert(layout->font); // you must specify a font to use this feature
 				layout->width = -layout->width
 						* (layout->font->char_width + gui.char_h_space);
+			  }
 			}
 
 			// a y <0 means, start just below the previous lowest point on the screen, -1 is immediately below, -2 has one blank line, -3 etc...

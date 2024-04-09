@@ -19,7 +19,8 @@
 #define EEPROM_0x41_VERSION 0x41
 #define EEPROM_0x42_VERSION 0x42
 #define EEPROM_0x43_VERSION 0x43
-#define EEPROM_VERSION 0x44
+#define EEPROM_0x44_VERSION 0x44
+#define EEPROM_VERSION 0x50
 
 typedef struct {
   graph_auto_max_min_t auto_max_min;
@@ -191,9 +192,17 @@ typedef struct eeprom_data {
 	uint8_t ui8_street_mode_cruise_enabled;
 	
 	uint8_t ui8_smooth_start_enabled;
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 	uint8_t ui8_light_sensor_enabled;
 	uint8_t ui8_light_sensor_sensitivity;
+#endif
+	uint8_t ui8_smooth_start_counter_set;
+	uint8_t ui8_eMTB_based_on_power;
+#ifdef SW102  
+	uint32_t ui32_wh_x10_total_offset;
+#endif
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
+	uint8_t ui8_light_sensor_hysteresis;
 #endif
 
 // FIXME align to 32 bit value by end of structure and pack other fields
@@ -205,6 +214,12 @@ void eeprom_write_variables(void);
 void eeprom_init_defaults(void);
 
 // *************************************************************************** //
+// Riding mode
+#define POWER_MODE													0
+#define TORQUE_MODE													1
+#define CADENCE_MODE												2
+#define eMTB_MODE													3
+
 // EEPROM memory variables default values
 #define DEFAULT_VALUE_RIDING_MODE	                                1
 #define DEFAULT_VALUE_ASSIST_LEVEL                                  0
@@ -218,10 +233,10 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_SERVICE_B_TIME								0
 #define DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE						0
 #define DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE						0
-#define DEFAULT_VALUE_WH_X10_TOTAL_OFFSET							0
 #define DEFAULT_VALUE_WH_X10_TRIP_A_OFFSET							0
 #define DEFAULT_VALUE_WH_X10_TRIP_B_OFFSET							0
 #endif
+#define DEFAULT_VALUE_WH_X10_TOTAL_OFFSET							0
 #define DEFAULT_VALUE_WH_X10_OFFSET                                 0
 #define DEFAULT_VALUE_HW_X10_100_PERCENT                            4000 // default to a battery of 400 Wh
 #define DEAFULT_VALUE_SHOW_NUMERIC_BATTERY_SOC                      1 // // 0=none 1=SOC 2=volts
@@ -263,26 +278,26 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_TORQUE_ASSIST_LEVEL_9                         250
 
 // default value for cadence assist
-#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_1                        100	// MAX 254
-#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_2                        120
-#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_3                        130
-#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_4                        140
-#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_5                        160
-#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_6                        180
-#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_7                        200
+#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_1                        25	// MAX 254
+#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_2                        50
+#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_3                        75
+#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_4                        100
+#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_5                        130
+#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_6                        160
+#define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_7                        190
 #define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_8                        220
 #define DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_9                        250
 
 // default value for eMTB assist
-#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_1                           2	// MAX 20
-#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_2                           4
-#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_3                           6
-#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_4                           8
-#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_5                           10
-#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_6                           12
-#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_7                           14
-#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_8                           16
-#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_9                           18
+#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_1                           40	// MAX 254
+#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_2                           70
+#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_3                           100
+#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_4                           130
+#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_5                           160
+#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_6                           185
+#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_7                           210
+#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_8                           230
+#define DEFAULT_VALUE_EMTB_ASSIST_LEVEL_9                           250
 
 #define DEFAULT_VALUE_WALK_ASSIST_FEATURE_ENABLED                   1
 #define DEFAULT_VALUE_CRUISE_FEATURE_ENABLED	             		0
@@ -297,12 +312,14 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_WALK_ASSIST_LEVEL_FACTOR_9                    50
 
 #define DEFAULT_VALUE_STARTUP_MOTOR_POWER_BOOST_FEATURE_ENABLED     1
-#define DEFAULT_VALUE_STARTUP_BOOST_TORQUE_FACTOR					250
-#define DEFAULT_VALUE_STARTUP_BOOST_CADENCE_STEP					25
+#define DEFAULT_VALUE_STARTUP_BOOST_TORQUE_FACTOR					300
+#define DEFAULT_VALUE_STARTUP_BOOST_CADENCE_STEP					20
 #define DEFAULT_VALUE_STARTUP_BOOST_AT_ZERO							0 // 0=cadence 1=speed
-#define DEFAULT_VALUE_SMOOTH_START_ENABLED							0
+#define DEFAULT_VALUE_SMOOTH_START_ENABLED							1
+#define DEFAULT_VALUE_SMOOTH_START_COUNTER_SET						35 // 35% = 4.2 sec
+#define DEFAULT_VALUE_eMTB_BASED_ON_POWER							1
 #define DEFAULT_VALUE_THROTTLE_FEATURE_ENABLED						0
-#define DEFAULT_VALUE_STARTUP_ASSIST_FEATURE_ENABLED     			1
+#define DEFAULT_VALUE_STARTUP_ASSIST_FEATURE_ENABLED     			0
 #define DEFAULT_VALUE_PASSWORD_ENABLED                              1
 #define DEFAULT_VALUE_PASSWORD_CHANGED                              0
 #define DEFAULT_VALUE_RESET_PASSWORD	                            0
@@ -327,8 +344,9 @@ void eeprom_init_defaults(void);
 #endif
 
 #define DEFAULT_VALUE_LIGHT_SENSOR_ENABLED							0 // disabled
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
-#define DEFAULT_VALUE_LIGHT_SENSOR_SENSITIVITY	                    50 // 100 = 100%
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
+#define DEFAULT_VALUE_LIGHT_SENSOR_SENSITIVITY	                    60 // 100 = 100%
+#define DEFAULT_VALUE_LIGHT_SENSOR_HYSTERESIS	                    10 // MAX 20%
 #endif
 
 #define DEFAULT_VALUE_ODOMETER_X10                                  0
@@ -339,7 +357,7 @@ void eeprom_init_defaults(void);
 #define DEFAULT_STREET_MODE_ENABLE_AT_STARTUP                       1 // enabled
 #define DEFAULT_STREET_MODE_ENABLE                                  0 // disabled
 #define DEFAULT_STREET_MODE_SPEED_LIMIT                             25 // 25 km/h
-#define DEFAULT_STREET_MODE_POWER_LIMIT                             10 // 250W --> 250 / 25 = 10
+#define DEFAULT_STREET_MODE_POWER_LIMIT                             20 // MAX 500W --> 500 / 25 = 20
 #define DEFAULT_STREET_MODE_THROTTLE_ENABLE                         0 // disabled
 #define DEFAULT_STREET_MODE_CRUISE_ENABLE                         	0 // disabled
 #define DEFAULT_STREET_MODE_HOTKEY_ENABLE                           0 // disabled
@@ -378,7 +396,6 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_TRIP_TIME                                      0
 #define DEFAULT_VALUE_TRIP_MAX_SPEED                                 0
 
-#define BIT_AVAILABLE												 0
 
 #define DEFAULT_BIT_DATA_1 (DEFAULT_VALUE_UNITS_TYPE | \
 (DEFAULT_VALUE_MOTOR_TYPE << 1) | \
@@ -395,7 +412,7 @@ void eeprom_init_defaults(void);
 (DEFAULT_STREET_MODE_FUNCTION_ENABLE << 3) | \
 (DEFAULT_STREET_MODE_ENABLE << 4) | \
 (DEFAULT_STREET_MODE_ENABLE_AT_STARTUP << 5) | \
-(BIT_AVAILABLE << 6) | \
+(DEFAULT_VALUE_eMTB_BASED_ON_POWER << 6) | \
 (DEFAULT_STREET_MODE_HOTKEY_ENABLE << 7))
 
 #define DEFAULT_BIT_DATA_3	(DEFAULT_VALUE_PASSWORD_ENABLED | \

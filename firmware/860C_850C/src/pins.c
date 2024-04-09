@@ -18,6 +18,9 @@ void pins_init (void)
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA |
                          RCC_APB2Periph_GPIOB |
                          RCC_APB2Periph_GPIOC |
+#ifdef DISPLAY_860C_V13
+                         RCC_APB2Periph_GPIOD |
+#endif
 						 RCC_APB2Periph_ADC1 |
                          RCC_APB2Periph_AFIO,
                          ENABLE);
@@ -29,7 +32,7 @@ void pins_init (void)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_Init(SYSTEM_POWER_ON_OFF__PORT, &GPIO_InitStructure);
 
-#ifdef DISPLAY_860C_V12									   
+#if defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)								   
   GPIO_InitStructure.GPIO_Pin = SYSTEM_POWER_2_ON_OFF__PIN;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
@@ -51,7 +54,7 @@ void pins_init (void)
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
   GPIO_Init(BUTTON_DOWN__PORT, &GPIO_InitStructure);
 
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
   GPIO_InitStructure.GPIO_Pin = BUTTON_M__PIN;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
@@ -74,7 +77,7 @@ void system_power(uint32_t ui32_state)
   if(ui32_state)
   {
     GPIO_SetBits(SYSTEM_POWER_ON_OFF__PORT, SYSTEM_POWER_ON_OFF__PIN);
-#ifdef DISPLAY_860C_V12
+#if defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
     GPIO_SetBits(SYSTEM_POWER_2_ON_OFF__PORT, SYSTEM_POWER_2_ON_OFF__PIN);
 #endif
     GPIO_SetBits(USB_CHARGE__PORT, USB_CHARGE__PIN);
@@ -82,7 +85,7 @@ void system_power(uint32_t ui32_state)
   else
   {
     GPIO_ResetBits(SYSTEM_POWER_ON_OFF__PORT, SYSTEM_POWER_ON_OFF__PIN);
-#ifdef DISPLAY_860C_V12
+#if defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
     GPIO_ResetBits(SYSTEM_POWER_2_ON_OFF__PORT, SYSTEM_POWER_2_ON_OFF__PIN);
 #endif												
     GPIO_ResetBits(USB_CHARGE__PORT, USB_CHARGE__PIN);

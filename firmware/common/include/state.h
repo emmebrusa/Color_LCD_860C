@@ -13,6 +13,11 @@
 #define PERCENT_TORQUE_SENSOR_RANGE_WITH_WEIGHT		75 // % of torque sensor range target with weight
 #define ADC_TORQUE_SENSOR_TARGET_WITH_WEIGHT		(uint16_t)((ADC_TORQUE_SENSOR_RANGE_TARGET*PERCENT_TORQUE_SENSOR_RANGE_WITH_WEIGHT)/100)
 
+// SOC calculation
+#define SOC_CALC_AUTO						0
+#define SOC_CALC_WH							0
+#define SOC_CALC_VOLTS						0
+
 // optional ADC function
 #define NOT_IN_USE							0
 #define TEMPERATURE_CONTROL					1
@@ -119,17 +124,17 @@ typedef struct rt_vars_struct {
 	uint16_t ui16_battery_power_filtered;
 	uint16_t ui16_pedal_power_filtered;
 	uint8_t ui8_pedal_cadence_filtered;
-	uint8_t ui8_battery_soc_percent_calculation;
 	uint16_t ui16_battery_voltage_soc_x10;
 	uint32_t ui32_wh_sum_x5;
 	uint32_t ui32_wh_sum_counter;
 	uint32_t ui32_wh_x10;
 	uint32_t ui32_wheel_speed_sensor_tick_counter_offset;
 
-#ifndef SW102
+//#ifndef SW102
 	//uint32_t ui32_wh_x10_total;
 	//uint32_t ui32_wh_x10_total_offset;
 	uint16_t ui16_battery_charge_cycles_x10;
+#ifndef SW102
 	//uint32_t ui32_wh_x10_trip_a;
 	//uint32_t ui32_wh_x10_trip_b;
 	uint32_t ui32_wh_x10_trip_a_offset;
@@ -241,6 +246,8 @@ typedef struct rt_vars_struct {
   uint8_t ui8_config_shortcut_key_enabled;
   uint8_t ui8_battery_soc_auto_reset;
   uint8_t ui8_smooth_start_enabled;
+  uint8_t ui8_smooth_start_counter_set;
+  uint8_t ui8_eMTB_based_on_power;
   
   battery_energy_h_km_t battery_energy_h_km;
 } rt_vars_t;
@@ -291,11 +298,11 @@ typedef struct ui_vars_struct {
 	uint32_t ui32_wh_sum_counter;
 	uint32_t ui32_wh_x10;
 
-#ifndef SW102
+//#ifndef SW102
 	uint32_t ui32_wh_x10_total;
 	uint32_t ui32_wh_x10_total_offset;
 	uint16_t ui16_battery_charge_cycles_x10;
-	
+#ifndef SW102
 	uint32_t ui32_wh_x10_trip_a;
 	uint32_t ui32_wh_x10_trip_b;
 	uint32_t ui32_wh_x10_trip_a_offset;
@@ -523,9 +530,12 @@ typedef struct ui_vars_struct {
   uint8_t ui8_config_shortcut_key_enabled;
   uint8_t ui8_battery_soc_auto_reset;
   uint8_t ui8_smooth_start_enabled;
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+  uint8_t ui8_smooth_start_counter_set;
+  uint8_t ui8_eMTB_based_on_power;
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
   uint8_t ui8_light_sensor_enabled;
   uint8_t ui8_light_sensor_sensitivity;
+  uint8_t ui8_light_sensor_hysteresis;
 #endif
 
 } ui_vars_t;

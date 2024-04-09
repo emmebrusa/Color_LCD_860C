@@ -14,11 +14,17 @@
 #if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
 #define SYSTEM_POWER_ON_OFF__PORT                   GPIOA
 #define SYSTEM_POWER_ON_OFF__PIN                    GPIO_Pin_11
+#elif defined(DISPLAY_860C_V13)
+#define SYSTEM_POWER_ON_OFF__PORT                   GPIOC
+#define SYSTEM_POWER_ON_OFF__PIN                    GPIO_Pin_13
 #endif
 
 #ifdef DISPLAY_860C_V12
 #define SYSTEM_POWER_2_ON_OFF__PORT                 GPIOA
 #define SYSTEM_POWER_2_ON_OFF__PIN                  GPIO_Pin_12
+#elif defined(DISPLAY_860C_V13)
+#define SYSTEM_POWER_2_ON_OFF__PORT                 GPIOD
+#define SYSTEM_POWER_2_ON_OFF__PIN                  GPIO_Pin_2
 #endif
 
 #if defined(DISPLAY_850C) || defined(DISPLAY_850C_2021)
@@ -50,7 +56,7 @@
 
 #if defined(DISPLAY_860C) || defined(DISPLAY_850C) || defined(DISPLAY_850C_2021)
 #define BUTTON_UP__PIN                              GPIO_Pin_11
-#elif DISPLAY_860C_V12
+#elif defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 #define BUTTON_UP__PIN                              GPIO_Pin_1
 #endif
 
@@ -60,12 +66,12 @@
 #if defined(DISPLAY_860C) || defined(DISPLAY_850C) || defined(DISPLAY_850C_2021)
 #define BUTTON_DOWN__PORT                           GPIOA
 #define BUTTON_DOWN__PIN                            GPIO_Pin_15
-#elif DISPLAY_860C_V12
+#elif defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 #define BUTTON_DOWN__PORT                           GPIOC
 #define BUTTON_DOWN__PIN                            GPIO_Pin_0
 #endif
 
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 #define BUTTON_M__PORT                              GPIOC
 #define BUTTON_M__PIN                               GPIO_Pin_2
 #endif

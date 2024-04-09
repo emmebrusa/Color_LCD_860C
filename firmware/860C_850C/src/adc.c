@@ -20,9 +20,9 @@ ADC value max and min: dark 4090, light 1150
 */
 void adc_init() {
 	GPIO_InitTypeDef ginit;
-#ifdef DISPLAY_860C
+#if defined(DISPLAY_860C)
 	ginit.GPIO_Pin = GPIO_Pin_1; // Light sensor
-#elif DISPLAY_860C_V12
+#elif DISPLAY_860C_V12 || defined(DISPLAY_860C_V13)
 	ginit.GPIO_Pin = GPIO_Pin_2; // Light sensor
 #elif defined(DISPLAY_850C) || defined(DISPLAY_850C_2021) || defined(SW102)
 	ginit.GPIO_Pin = GPIO_Pin_4; // Battery voltage
@@ -39,9 +39,9 @@ void adc_init() {
 	ADC_Init(ADC1, &ADC_InitStruct);
 	ADC_Cmd(ADC1, ENABLE);
 // Light sensor
-#ifdef DISPLAY_860C
+#if defined(DISPLAY_860C)
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 1, ADC_SampleTime_239Cycles5);
-#elif DISPLAY_860C_V12
+#elif DISPLAY_860C_V12 || defined(DISPLAY_860C_V13)
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_2, 1, ADC_SampleTime_239Cycles5);
 #elif defined(DISPLAY_850C) || defined(DISPLAY_850C_2021) || defined(SW102)
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 1, ADC_SampleTime_239Cycles5);
@@ -50,7 +50,7 @@ void adc_init() {
 	ADC_SoftwareStartConvCmd(ADC1, ENABLE);
 }
 
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 uint16_t adc_light_sensor_get() {
 	uint32_t adc_light_sensor_value;
 	

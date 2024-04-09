@@ -87,14 +87,14 @@ Display Menus (* new items)
 		*Level 1
 		*Level x
 	*eMTB assist
+		*Based on (torque/power)
 		*Level 1
 		*Level x
-	Assistance values for all modes from 1 to 254, for eMTB from 1 to 20.
+	Assistance values for all modes from 1 to 254
 
   Walk assist
 	*Speed 1
 	*Speed x
-	*Cruise feature
 
   Startup boost
 	*Boost torque factor
@@ -102,6 +102,7 @@ Display Menus (* new items)
 	*Boost at zero (cadence/speed)
 	*Startup assist
 	*Smooth start
+	*Smooth start ramp
 
   Motor temperature
 	Feature
@@ -123,8 +124,8 @@ Display Menus (* new items)
   Various
 	*Light sensor
 	*Light sensitivity %
+	*Light hysteresis %
 	*Lights configuration
-	*Assist with error
 	Virtual throttle step
 	Odometer
 	*A service
@@ -185,7 +186,7 @@ Error msg:
   e 3 Cadence Fault
   e 4 Motor Blocked
   e 5 Throttle Fault
-  e 6 Comms Fault
+  e 6 Fatal error
   e 7 Overcurrent
   e 8 Speed Fault
 

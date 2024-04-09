@@ -34,7 +34,7 @@ static Field bikeMenus[] =
 	FIELD_EDITABLE_UINT("Max power limit", &ui_vars.ui16_motor_power_limit, "watts", 25, 1000, .div_digits = 0, .inc_step = 25, .hide_fraction = true),
 	FIELD_EDITABLE_ENUM("Assist with error", &ui_vars.ui8_assist_whit_error_enabled, "no", "yes"),
 	FIELD_EDITABLE_ENUM("Throttle", &ui_vars.ui8_throttle_feature_enabled, "disable", "pedaling", "6km/h only", "6km/h & ped", "unconditional"),
-	FIELD_EDITABLE_ENUM("Cruise", &ui_vars.ui8_cruise_feature_enabled, "disable", "pedaling", "unconditional"),
+	FIELD_EDITABLE_ENUM("Cruise", &ui_vars.ui8_cruise_feature_enabled, "disable", "pedaling", "w/o pedaling"),
 	FIELD_EDITABLE_ENUM("Password enable", &ui_vars.ui8_password_enabled, "no", "yes"),
 #else
 	FIELD_EDITABLE_UINT("Circumfere", &ui_vars.ui16_wheel_perimeter, "mm", 750, 3000, .inc_step = 10),
@@ -57,7 +57,7 @@ static Field bikeMenus[] =
 static Field batteryMenus[] =
 {
 #ifndef SW102
-	FIELD_EDITABLE_UINT("Max current", &ui_vars.ui8_battery_max_current, "amps", 1, 18),
+	FIELD_EDITABLE_UINT("Max current", &ui_vars.ui8_battery_max_current, "amps", 1, 22),
 	FIELD_EDITABLE_UINT("Low cut-off", &ui_vars.ui16_battery_low_voltage_cut_off_x10, "volts", 160, 630, .div_digits = 1),
 	FIELD_EDITABLE_UINT("Voltage cal %", &ui_vars.ui16_battery_voltage_calibrate_percent_x10, "volts", 950, 1050, .div_digits = 1),
 	FIELD_EDITABLE_UINT("Resistance", &ui_vars.ui16_battery_pack_resistance_x1000, "mohm", 0, 1000),
@@ -65,7 +65,7 @@ static Field batteryMenus[] =
 	FIELD_READONLY_UINT("Resistance est", &ui_vars.ui16_battery_pack_resistance_estimated_x1000, "mohm", 0, 1000),
 	FIELD_READONLY_UINT("Power loss est", &ui_vars.ui16_battery_power_loss, "watts", false, .div_digits = 0),
 #else
-	FIELD_EDITABLE_UINT("Max curren", &ui_vars.ui8_battery_max_current, "amps", 1, 18),
+	FIELD_EDITABLE_UINT("Max curren", &ui_vars.ui8_battery_max_current, "amps", 1, 20),
 	FIELD_EDITABLE_UINT("Lo cut-off", &ui_vars.ui16_battery_low_voltage_cut_off_x10, "volts", 160, 630, .div_digits = 1),
 	FIELD_EDITABLE_UINT("Voltag cal", &ui_vars.ui16_battery_voltage_calibrate_percent_x10, "volts", 950, 1050, .div_digits = 1),
 	FIELD_EDITABLE_UINT("Resistance", &ui_vars.ui16_battery_pack_resistance_x1000, "mohm", 0, 1000),
@@ -95,6 +95,7 @@ static Field batterySOCMenus[] =
 	FIELD_EDITABLE_UINT("Used Wh", &ui_vars.ui32_wh_x10, "whr", 0, 99900, .div_digits = 1, .inc_step = 10, .onSetEditable = onSetConfigurationBatterySOCUsedWh),
 	FIELD_EDITABLE_ENUM("Manual rst", &ui8_g_configuration_battery_soc_reset, "no", "yes"),
 	FIELD_EDITABLE_UINT("Auto rst%", &ui_vars.ui8_battery_soc_auto_reset, "", 0, 100),
+	FIELD_READONLY_UINT("Charge cycl", &ui_vars.ui16_battery_charge_cycles_x10, "", .div_digits = 1),
 #endif
 	FIELD_END };
 
@@ -111,6 +112,7 @@ static Field motorMenus[] =
 	FIELD_EDITABLE_UINT("Power max", &ui_vars.ui16_target_max_battery_power, "watts", 25, 1000, .div_digits = 0, .inc_step = 25, .hide_fraction = true),
 	FIELD_EDITABLE_UINT("Motor acc", &ui_vars.ui8_motor_acceleration_adjustment, "%", 0, 100, .div_digits = 0),
 	FIELD_EDITABLE_UINT("Motor dec", &ui_vars.ui8_motor_deceleration_adjustment, "%", 0, 100, .div_digits = 0),
+	FIELD_EDITABLE_ENUM("Field weak", &ui_vars.ui8_field_weakening_feature_enabled, "disable", "enable"),
 #endif
 	FIELD_END };
 
@@ -139,7 +141,7 @@ static Field torqueSensorMenus[] =
 {
 	FIELD_EDITABLE_ENUM("A w/o ped", &ui_vars.ui8_motor_assistance_startup_without_pedal_rotation, "disable", "enable"),
 	FIELD_EDITABLE_UINT("Torque thr", &ui_vars.ui8_torque_sensor_adc_threshold, "", 5, 100),
-	//FIELD_EDITABLE_ENUM("Coast brk", &ui_vars.ui8_coast_brake_enable, "disable", "enable"),
+	FIELD_EDITABLE_ENUM("Coast brk", &ui_vars.ui8_coast_brake_enable, "disable", "enable"),
 	FIELD_EDITABLE_UINT("Coast ADC", &ui_vars.ui8_coast_brake_adc, "", 5, 50),
 	FIELD_END };
 	
@@ -162,54 +164,55 @@ static Field torqueCalibrationMenus[] =
 
 static Field powerAssistMenus[] =
 {
-	FIELD_EDITABLE_UINT("Level 1", &ui_vars.ui8_assist_level_factor[0][0], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 2", &ui_vars.ui8_assist_level_factor[0][1], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 3", &ui_vars.ui8_assist_level_factor[0][2], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 4", &ui_vars.ui8_assist_level_factor[0][3], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 5", &ui_vars.ui8_assist_level_factor[0][4], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 6", &ui_vars.ui8_assist_level_factor[0][5], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 7", &ui_vars.ui8_assist_level_factor[0][6], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 8", &ui_vars.ui8_assist_level_factor[0][7], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 9", &ui_vars.ui8_assist_level_factor[0][8], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 1", &ui_vars.ui8_assist_level_factor[POWER_MODE][0], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 2", &ui_vars.ui8_assist_level_factor[POWER_MODE][1], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 3", &ui_vars.ui8_assist_level_factor[POWER_MODE][2], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 4", &ui_vars.ui8_assist_level_factor[POWER_MODE][3], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 5", &ui_vars.ui8_assist_level_factor[POWER_MODE][4], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 6", &ui_vars.ui8_assist_level_factor[POWER_MODE][5], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 7", &ui_vars.ui8_assist_level_factor[POWER_MODE][6], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 8", &ui_vars.ui8_assist_level_factor[POWER_MODE][7], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 9", &ui_vars.ui8_assist_level_factor[POWER_MODE][8], "", 1, 254, .div_digits = 0),
 	FIELD_END };
 	
 static Field torqueAssistMenus[] =
 {
-	FIELD_EDITABLE_UINT("Level 1", &ui_vars.ui8_assist_level_factor[1][0], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 2", &ui_vars.ui8_assist_level_factor[1][1], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 3", &ui_vars.ui8_assist_level_factor[1][2], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 4", &ui_vars.ui8_assist_level_factor[1][3], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 5", &ui_vars.ui8_assist_level_factor[1][4], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 6", &ui_vars.ui8_assist_level_factor[1][5], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 7", &ui_vars.ui8_assist_level_factor[1][6], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 8", &ui_vars.ui8_assist_level_factor[1][7], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 9", &ui_vars.ui8_assist_level_factor[1][8], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 1", &ui_vars.ui8_assist_level_factor[TORQUE_MODE][0], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 2", &ui_vars.ui8_assist_level_factor[TORQUE_MODE][1], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 3", &ui_vars.ui8_assist_level_factor[TORQUE_MODE][2], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 4", &ui_vars.ui8_assist_level_factor[TORQUE_MODE][3], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 5", &ui_vars.ui8_assist_level_factor[TORQUE_MODE][4], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 6", &ui_vars.ui8_assist_level_factor[TORQUE_MODE][5], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 7", &ui_vars.ui8_assist_level_factor[TORQUE_MODE][6], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 8", &ui_vars.ui8_assist_level_factor[TORQUE_MODE][7], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 9", &ui_vars.ui8_assist_level_factor[TORQUE_MODE][8], "", 1, 254, .div_digits = 0),
 	FIELD_END };
 	
 static Field cadenceAssistMenus[] =
 {
-	FIELD_EDITABLE_UINT("Level 1", &ui_vars.ui8_assist_level_factor[2][0], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 2", &ui_vars.ui8_assist_level_factor[2][1], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 3", &ui_vars.ui8_assist_level_factor[2][2], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 4", &ui_vars.ui8_assist_level_factor[2][3], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 5", &ui_vars.ui8_assist_level_factor[2][4], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 6", &ui_vars.ui8_assist_level_factor[2][5], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 7", &ui_vars.ui8_assist_level_factor[2][6], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 8", &ui_vars.ui8_assist_level_factor[2][7], "", 1, 254, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 9", &ui_vars.ui8_assist_level_factor[2][8], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 1", &ui_vars.ui8_assist_level_factor[CADENCE_MODE][0], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 2", &ui_vars.ui8_assist_level_factor[CADENCE_MODE][1], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 3", &ui_vars.ui8_assist_level_factor[CADENCE_MODE][2], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 4", &ui_vars.ui8_assist_level_factor[CADENCE_MODE][3], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 5", &ui_vars.ui8_assist_level_factor[CADENCE_MODE][4], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 6", &ui_vars.ui8_assist_level_factor[CADENCE_MODE][5], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 7", &ui_vars.ui8_assist_level_factor[CADENCE_MODE][6], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 8", &ui_vars.ui8_assist_level_factor[CADENCE_MODE][7], "", 1, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 9", &ui_vars.ui8_assist_level_factor[CADENCE_MODE][8], "", 1, 254, .div_digits = 0),
 	FIELD_END };
 	
 static Field eMTBAssistMenus[] =
 {
-	FIELD_EDITABLE_UINT("Level 1", &ui_vars.ui8_assist_level_factor[3][0], "", 1, 20, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 2", &ui_vars.ui8_assist_level_factor[3][1], "", 1, 20, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 3", &ui_vars.ui8_assist_level_factor[3][2], "", 1, 20, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 4", &ui_vars.ui8_assist_level_factor[3][3], "", 1, 20, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 5", &ui_vars.ui8_assist_level_factor[3][4], "", 1, 20, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 6", &ui_vars.ui8_assist_level_factor[3][5], "", 1, 20, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 7", &ui_vars.ui8_assist_level_factor[3][6], "", 1, 20, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 8", &ui_vars.ui8_assist_level_factor[3][7], "", 1, 20, .div_digits = 0),
-	FIELD_EDITABLE_UINT("Level 9", &ui_vars.ui8_assist_level_factor[3][8], "", 1, 20, .div_digits = 0),
+	FIELD_EDITABLE_ENUM("Based on", &ui_vars.ui8_eMTB_based_on_power, "torque", "power"),
+	FIELD_EDITABLE_UINT("Level 1", &ui_vars.ui8_assist_level_factor[eMTB_MODE][0], "", 21, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 2", &ui_vars.ui8_assist_level_factor[eMTB_MODE][1], "", 21, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 3", &ui_vars.ui8_assist_level_factor[eMTB_MODE][2], "", 21, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 4", &ui_vars.ui8_assist_level_factor[eMTB_MODE][3], "", 21, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 5", &ui_vars.ui8_assist_level_factor[eMTB_MODE][4], "", 21, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 6", &ui_vars.ui8_assist_level_factor[eMTB_MODE][5], "", 21, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 7", &ui_vars.ui8_assist_level_factor[eMTB_MODE][6], "", 21, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 8", &ui_vars.ui8_assist_level_factor[eMTB_MODE][7], "", 21, 254, .div_digits = 0),
+	FIELD_EDITABLE_UINT("Level 9", &ui_vars.ui8_assist_level_factor[eMTB_MODE][8], "", 21, 254, .div_digits = 0),
 	FIELD_END };
 
 	static Field assistMenus[] =
@@ -218,7 +221,7 @@ static Field eMTBAssistMenus[] =
 	FIELD_EDITABLE_UINT("Num assist levels", &ui_vars.ui8_number_of_assist_levels, "", 1, 9),
 	FIELD_SCROLLABLE("Power assist", powerAssistMenus),
 	FIELD_SCROLLABLE("Torque assist", torqueAssistMenus),
-	FIELD_SCROLLABLE(" Cadence assist", cadenceAssistMenus),
+	FIELD_SCROLLABLE("Cadence assist", cadenceAssistMenus),
 	FIELD_SCROLLABLE("eMTB assist", eMTBAssistMenus),
 #else
 	FIELD_EDITABLE_UINT("Num Levels", &ui_vars.ui8_number_of_assist_levels, "", 1, 9),
@@ -252,11 +255,14 @@ static Field startupPowerMenus[] =
 	FIELD_EDITABLE_ENUM("Boost at zero", &ui_vars.ui8_startup_boost_at_zero, "cadence", "speed"),
 	FIELD_EDITABLE_ENUM("Startup assist", &ui_vars.ui8_startup_assist_feature_enabled, "disable", "enable"),
 	FIELD_EDITABLE_ENUM("Smooth start", &ui_vars.ui8_smooth_start_enabled, "disable", "enable"),
+	FIELD_EDITABLE_UINT("Smooth start ramp", &ui_vars.ui8_smooth_start_counter_set, "%", 0, 100, .div_digits = 0),
 #else
 	FIELD_EDITABLE_UINT("Boost fact", &ui_vars.ui16_startup_boost_torque_factor, "%", 1, 500, .div_digits = 0),
 	FIELD_EDITABLE_UINT("Boost step", &ui_vars.ui8_startup_boost_cadence_step, "", 10, 50, .div_digits = 0),
 	FIELD_EDITABLE_ENUM("Boost zero", &ui_vars.ui8_startup_boost_at_zero, "cadence", "speed"),
-	FIELD_EDITABLE_ENUM("Smooth sta", &ui_vars.ui8_smooth_start_enabled, "disable", "enable"),
+	FIELD_EDITABLE_ENUM("Startup as", &ui_vars.ui8_startup_assist_feature_enabled, "disable", "enable"),
+	FIELD_EDITABLE_ENUM("SmoothStar", &ui_vars.ui8_smooth_start_enabled, "disable", "enable"),
+	FIELD_EDITABLE_UINT("SmoothRamp", &ui_vars.ui8_smooth_start_counter_set, "%", 0, 100, .div_digits = 0),
 #endif
 	FIELD_END };
 
@@ -282,7 +288,7 @@ static Field streetModeMenus[] =
 	FIELD_EDITABLE_UINT("Speed limit", &ui_vars.ui8_street_mode_speed_limit, "kph", 1, 99, .div_digits = 0, .inc_step = 1, .hide_fraction = true),
 	FIELD_EDITABLE_UINT("Motor power limit", &ui_vars.ui16_street_mode_power_limit, "watts", 25, 1000, .div_digits = 0, .inc_step = 25, .hide_fraction = true),
 	FIELD_EDITABLE_ENUM("Throttle", &ui_vars.ui8_street_mode_throttle_enabled, "disable", "pedaling", "6km/h only", "6km/h & ped", "unconditional"),
-	FIELD_EDITABLE_ENUM("Cruise", &ui_vars.ui8_street_mode_cruise_enabled, "disable", "pedaling", "unconditional"),
+	FIELD_EDITABLE_ENUM("Cruise", &ui_vars.ui8_street_mode_cruise_enabled, "disable", "pedaling", "w/o pedaling"),
 	FIELD_EDITABLE_ENUM("Hotkey enable", &ui_vars.ui8_street_mode_hotkey_enabled, "no", "yes"),
 #else
 	FIELD_EDITABLE_ENUM("Enabl Mode", &ui_vars.ui8_street_mode_enabled, "no", "yes"),
@@ -313,6 +319,7 @@ static Field displayMenus[] =
 #else
 	FIELD_EDITABLE_UINT("Auto p off", &ui_vars.ui8_lcd_power_off_time_minutes, "mins", 0, 255),
 	FIELD_EDITABLE_ENUM("Units", &ui_vars.ui8_units_type, "SI", "Imperial"),
+	FIELD_EDITABLE_ENUM("Config shortcut key", &ui_vars.ui8_config_shortcut_key_enabled, "no", "yes"),
 	FIELD_EDITABLE_ENUM("Reset BLE", &ui8_g_configuration_display_reset_bluetooth_peers, "no", "yes"),
 	FIELD_EDITABLE_ENUM("Reset def", &ui8_g_configuration_display_reset_to_defaults, "no", "yes"),
 	FIELD_EDITABLE_ENUM("Confirm", &ui_vars.ui8_confirm_default_reset, "no", "yes"),
@@ -323,9 +330,10 @@ static Field displayMenus[] =
 	
 static Field variousMenus[] =
 {
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 	FIELD_EDITABLE_ENUM("Light sensor", &ui_vars.ui8_light_sensor_enabled, "disable", "enable"),
 	FIELD_EDITABLE_UINT("Light sensitivity %", &ui_vars.ui8_light_sensor_sensitivity, "", 1, 100),
+	FIELD_EDITABLE_UINT("Light hysteresis %", &ui_vars.ui8_light_sensor_hysteresis, "", 1, 20),
 #endif
 #ifndef SW102
 	FIELD_EDITABLE_UINT("Lights configuration", &ui_vars.ui8_lights_configuration, "", 0, 8),

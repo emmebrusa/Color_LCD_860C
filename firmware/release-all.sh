@@ -53,6 +53,12 @@ make -f Makefile clean
 rm -R ../common/src
 make -f Makefile VERSION=$VERSION DISPLAY_VERSION="860C_V12_BOOTLOADER"
 cp main.bin $RELEASE_FOLDER/860C_V12-v$VERSION-bootloader.bin
+
+# version 860C_V1.3 bootloader
+make -f Makefile clean
+rm -R ../common/src
+make -f Makefile VERSION=$VERSION DISPLAY_VERSION="860C_V13_BOOTLOADER"
+cp main.bin $RELEASE_FOLDER/860C_V13-v$VERSION-bootloader.bin
 cd ../..
 
 echo 

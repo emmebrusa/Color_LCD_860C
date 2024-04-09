@@ -118,7 +118,7 @@ void showNextScreen();
 void main_idle(); // call every 20ms
 void setWarning(ColorOp color, const char *str);
 
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 void auto_on_off_lights(void);
 #endif
 

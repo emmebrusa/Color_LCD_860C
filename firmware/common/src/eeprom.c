@@ -28,14 +28,14 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui8_assist_level = DEFAULT_VALUE_ASSIST_LEVEL,
   .ui16_wheel_perimeter = DEFAULT_VALUE_WHEEL_PERIMETER,
   .ui8_wheel_max_speed = DEFAULT_VALUE_WHEEL_MAX_SPEED,
-  
+//#ifndef SW102
+  .ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET,
 #ifndef SW102
   .ui16_service_a_distance = DEFAULT_VALUE_SERVICE_A_DISTANCE,
   .ui16_service_b_hours = DEFAULT_VALUE_SERVICE_B_HOURS,
   .ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME,
   .ui8_service_a_distance_enable = DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE,
   .ui8_service_b_hours_enable = DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE,
-  .ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET,
   .ui32_wh_x10_trip_a_offset = DEFAULT_VALUE_WH_X10_TRIP_A_OFFSET,
   .ui32_wh_x10_trip_b_offset = DEFAULT_VALUE_WH_X10_TRIP_B_OFFSET,
 #endif
@@ -280,6 +280,7 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui8_lights_configuration = DEFAULT_LIGHTS_CONFIGURATION,
   .ui16_startup_boost_torque_factor = DEFAULT_VALUE_STARTUP_BOOST_TORQUE_FACTOR,
   .ui8_startup_boost_cadence_step = DEFAULT_VALUE_STARTUP_BOOST_CADENCE_STEP,
+  .ui8_smooth_start_counter_set = DEFAULT_VALUE_SMOOTH_START_COUNTER_SET,
   .ui8_adc_pedal_torque_offset_adj = DEFAULT_TORQUE_SENSOR_ADC_OFFSET_ADJ,
   .ui8_adc_pedal_torque_range_adj = DEFAULT_TORQUE_SENSOR_ADC_RANGE_ADJ,
   .ui8_adc_pedal_torque_angle_adj_index = DEFAULT_TORQUE_SENSOR_ADC_ANGLE_ADJ_INDEX,
@@ -289,8 +290,9 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui16_adc_pedal_torque_with_weight = DEFAULT_TORQUE_SENSOR_ADC_WITH_WEIGHT,
   .ui16_saved_password = DEFAULT_VALUE_PASSWORD,
 
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
   .ui8_light_sensor_sensitivity = DEFAULT_VALUE_LIGHT_SENSOR_SENSITIVITY,
+  .ui8_light_sensor_hysteresis = DEFAULT_VALUE_LIGHT_SENSOR_HYSTERESIS,
 #endif
 
 #ifndef SW102
@@ -345,8 +347,9 @@ void eeprom_init() {
 			m_eeprom_data.ui8_adc_pedal_torque_angle_adj_index = DEFAULT_TORQUE_SENSOR_ADC_ANGLE_ADJ_INDEX;
 
           case EEPROM_0x41_VERSION:
-#ifndef SW102
+//#ifndef SW102
 			m_eeprom_data.ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET;
+#ifndef SW102
 			m_eeprom_data.ui16_service_a_distance = DEFAULT_VALUE_SERVICE_A_DISTANCE;
 			m_eeprom_data.ui16_service_b_hours = DEFAULT_VALUE_SERVICE_B_HOURS;
 			m_eeprom_data.ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME;
@@ -379,11 +382,39 @@ void eeprom_init() {
 			m_eeprom_data.ui8_bit_data_3 &= 0xDF; // .ui8_brake_input = 0
 			
           case EEPROM_0x43_VERSION:
-			m_eeprom_data.ui8_smooth_start_enabled = DEFAULT_VALUE_SMOOTH_START_ENABLED;
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+			m_eeprom_data.ui8_bit_data_1 &= 0xDF; // .ui8_smooth_start_enabled = 0
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 			m_eeprom_data.ui8_light_sensor_enabled = DEFAULT_VALUE_LIGHT_SENSOR_ENABLED;
 			m_eeprom_data.ui8_light_sensor_sensitivity = DEFAULT_VALUE_LIGHT_SENSOR_SENSITIVITY;
+			m_eeprom_data.ui8_light_sensor_hysteresis = DEFAULT_VALUE_LIGHT_SENSOR_HYSTERESIS;
 #endif
+		  case EEPROM_0x44_VERSION:
+			m_eeprom_data.ui8_bit_data_1 |= 0x20; // .ui8_smooth_start_enabled = 1
+			m_eeprom_data.ui8_bit_data_2 |= 0x40; // .ui8_eMTB_based_on_power = 1
+			m_eeprom_data.ui8_smooth_start_enabled = DEFAULT_VALUE_SMOOTH_START_ENABLED;
+			m_eeprom_data.ui8_smooth_start_counter_set = DEFAULT_VALUE_SMOOTH_START_COUNTER_SET;
+			m_eeprom_data.ui8_eMTB_based_on_power = DEFAULT_VALUE_eMTB_BASED_ON_POWER;
+			
+			m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][0] = DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_1;
+			m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][1] = DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_2;
+			m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][2] = DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_3;
+			m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][3] = DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_4;
+			m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][4] = DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_5;
+			m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][5] = DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_6;
+			m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][6] = DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_7;
+			m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][7] = DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_8;
+			m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][8] = DEFAULT_VALUE_CADENCE_ASSIST_LEVEL_9;
+			
+			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][0] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_1;
+			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][1] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_2;
+			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][2] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_3;
+			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][3] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_4;
+			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][4] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_5;
+			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][5] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_6;
+			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][6] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_7;
+			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][7] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_8;
+			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][8] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_9;
+			
 		  case EEPROM_VERSION:
 			// reset password
 			if(m_eeprom_data.ui8_bit_data_3 & 64) {
@@ -433,7 +464,7 @@ void eeprom_init_variables(void) {
 			(m_eeprom_data.ui8_bit_data_1 & 16) >> 4;
 	ui_vars->ui8_smooth_start_enabled =
 			(m_eeprom_data.ui8_bit_data_1 & 32) >> 5;
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 	ui_vars->ui8_light_sensor_enabled =
 			(m_eeprom_data.ui8_bit_data_1 & 64) >> 6;
 #endif
@@ -451,25 +482,27 @@ void eeprom_init_variables(void) {
 			(m_eeprom_data.ui8_bit_data_2 & 16) >> 4;
 	ui_vars->ui8_street_mode_enabled_on_startup =
 			(m_eeprom_data.ui8_bit_data_2 & 32) >> 5;
-	// free for future use
+	ui_vars->ui8_eMTB_based_on_power =
+			(m_eeprom_data.ui8_bit_data_2 & 64) >> 6;
 	ui_vars->ui8_street_mode_hotkey_enabled =
       (m_eeprom_data.ui8_bit_data_2 & 128) >> 7;
 	  
 	ui_vars->ui8_password_enabled =
 			m_eeprom_data.ui8_bit_data_3 & 1;
  
-#ifndef SW102
+//#ifndef SW102
 	ui_vars->ui8_config_shortcut_key_enabled =
 			(m_eeprom_data.ui8_bit_data_3 & 2) >> 1;
 	ui_vars->ui8_field_weakening_feature_enabled =	  
 			(m_eeprom_data.ui8_bit_data_3 & 4) >> 2;
 	ui_vars->ui8_startup_assist_feature_enabled =
 			(m_eeprom_data.ui8_bit_data_3 & 8) >> 3;
+/*
 #else
 	ui_vars->ui8_config_shortcut_key_enabled = 1;
 	ui_vars->ui8_field_weakening_feature_enabled = 1;
 	ui_vars->ui8_startup_assist_feature_enabled = 1;
-#endif
+#endif */
 	ui_vars->ui8_startup_boost_at_zero =
 			(m_eeprom_data.ui8_bit_data_3 & 16) >> 4;
 	ui_vars->ui8_brake_input =
@@ -484,8 +517,9 @@ void eeprom_init_variables(void) {
 	ui_vars->ui16_wheel_perimeter = m_eeprom_data.ui16_wheel_perimeter;
 	ui_vars->ui8_wheel_max_speed = m_eeprom_data.ui8_wheel_max_speed;
 		
-#ifndef SW102
+//#ifndef SW102
 	ui_vars->ui32_wh_x10_total_offset = m_eeprom_data.ui32_wh_x10_total_offset;
+#ifndef SW102	
 	ui_vars->ui32_wh_x10_trip_a_offset = m_eeprom_data.ui32_wh_x10_trip_a_offset;
 	ui_vars->ui32_wh_x10_trip_b_offset = m_eeprom_data.ui32_wh_x10_trip_b_offset;
 #endif
@@ -546,10 +580,10 @@ void eeprom_init_variables(void) {
 	COPY_ARRAY(ui_vars, &m_eeprom_data, graphs_field_selectors);
 	
 	for (uint8_t i = 0; i < ASSIST_LEVEL_NUMBER; i++) {
-		ui_vars->ui8_assist_level_factor[0][i] = m_eeprom_data.ui8_assist_level_factor[0][i];
-		ui_vars->ui8_assist_level_factor[1][i] = m_eeprom_data.ui8_assist_level_factor[1][i];
-		ui_vars->ui8_assist_level_factor[2][i] = m_eeprom_data.ui8_assist_level_factor[2][i];
-		ui_vars->ui8_assist_level_factor[3][i] = m_eeprom_data.ui8_assist_level_factor[3][i];
+		ui_vars->ui8_assist_level_factor[POWER_MODE][i] = m_eeprom_data.ui8_assist_level_factor[POWER_MODE][i];
+		ui_vars->ui8_assist_level_factor[TORQUE_MODE][i] = m_eeprom_data.ui8_assist_level_factor[TORQUE_MODE][i];
+		ui_vars->ui8_assist_level_factor[CADENCE_MODE][i] = m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][i];
+		ui_vars->ui8_assist_level_factor[eMTB_MODE][i] = m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][i];
 	}
   
 #ifndef SW102
@@ -697,9 +731,13 @@ void eeprom_init_variables(void) {
   ui_vars->ui8_street_mode_cruise_enabled =
 	  m_eeprom_data.ui8_street_mode_cruise_enabled;
 
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
   ui_vars->ui8_light_sensor_sensitivity =
       m_eeprom_data.ui8_light_sensor_sensitivity;
+  if((!m_eeprom_data.ui8_light_sensor_hysteresis)||(m_eeprom_data.ui8_light_sensor_hysteresis > 20))
+	ui_vars->ui8_light_sensor_hysteresis = DEFAULT_VALUE_LIGHT_SENSOR_HYSTERESIS; 
+  else
+	ui_vars->ui8_light_sensor_hysteresis = m_eeprom_data.ui8_light_sensor_hysteresis;
 #endif
 	  
   ui_vars->ui8_coast_brake_adc =
@@ -723,6 +761,8 @@ void eeprom_init_variables(void) {
 	  m_eeprom_data.ui16_startup_boost_torque_factor;
   ui_vars->ui8_startup_boost_cadence_step =
 	  m_eeprom_data.ui8_startup_boost_cadence_step;
+  ui_vars->ui8_smooth_start_counter_set =
+	  m_eeprom_data.ui8_smooth_start_counter_set;
   ui_vars->ui8_adc_pedal_torque_offset_adj =
 	  m_eeprom_data.ui8_adc_pedal_torque_offset_adj;
   ui_vars->ui8_adc_pedal_torque_range_adj =
@@ -793,7 +833,7 @@ void eeprom_write_variables(void) {
 	  (ui_vars->ui8_motor_assistance_startup_without_pedal_rotation << 3) |
 	  (ui_vars->ui8_startup_motor_power_boost_feature_enabled << 4) |
 	  (ui_vars->ui8_smooth_start_enabled << 5) |
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 	  (ui_vars->ui8_light_sensor_enabled << 6) |
 #endif
 	  (ui_vars->ui8_walk_assist_feature_enabled << 7));
@@ -804,7 +844,7 @@ void eeprom_write_variables(void) {
 	  (ui_vars->ui8_street_mode_function_enabled << 3) |
 	  (ui_vars->ui8_street_mode_enabled << 4) |
 	  (ui_vars->ui8_street_mode_enabled_on_startup << 5) |
-	  // bit free for future use
+	  (ui_vars->ui8_eMTB_based_on_power << 6) |
 	  (ui_vars->ui8_street_mode_hotkey_enabled << 7));
 
 	m_eeprom_data.ui8_bit_data_3 = (ui_vars->ui8_password_enabled |
@@ -821,9 +861,10 @@ void eeprom_write_variables(void) {
 	m_eeprom_data.ui16_wheel_perimeter = ui_vars->ui16_wheel_perimeter;
 	m_eeprom_data.ui8_wheel_max_speed = ui_vars->ui8_wheel_max_speed;
 	
-#ifndef SW102
+//#ifndef SW102
 	// save total & trip Wh
 	m_eeprom_data.ui32_wh_x10_total_offset = ui_vars->ui32_wh_x10_total;
+#ifndef SW102
 	m_eeprom_data.ui32_wh_x10_trip_a_offset = ui_vars->ui32_wh_x10_trip_a;
 	m_eeprom_data.ui32_wh_x10_trip_b_offset = ui_vars->ui32_wh_x10_trip_b;
 #endif
@@ -857,10 +898,10 @@ void eeprom_write_variables(void) {
 			ui_vars->ui8_battery_soc_auto_reset;
 	
 	for (uint8_t i = 0; i < ASSIST_LEVEL_NUMBER; i++) {
-		m_eeprom_data.ui8_assist_level_factor[0][i] = ui_vars->ui8_assist_level_factor[0][i];
-		m_eeprom_data.ui8_assist_level_factor[1][i] = ui_vars->ui8_assist_level_factor[1][i];
-		m_eeprom_data.ui8_assist_level_factor[2][i] = ui_vars->ui8_assist_level_factor[2][i];
-		m_eeprom_data.ui8_assist_level_factor[3][i] = ui_vars->ui8_assist_level_factor[3][i];
+		m_eeprom_data.ui8_assist_level_factor[POWER_MODE][i] = ui_vars->ui8_assist_level_factor[POWER_MODE][i];
+		m_eeprom_data.ui8_assist_level_factor[TORQUE_MODE][i] = ui_vars->ui8_assist_level_factor[TORQUE_MODE][i];
+		m_eeprom_data.ui8_assist_level_factor[CADENCE_MODE][i] = ui_vars->ui8_assist_level_factor[CADENCE_MODE][i];
+		m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][i] = ui_vars->ui8_assist_level_factor[eMTB_MODE][i];
 	}
 	m_eeprom_data.ui8_number_of_assist_levels =
 			ui_vars->ui8_number_of_assist_levels;
@@ -966,9 +1007,11 @@ void eeprom_write_variables(void) {
   m_eeprom_data.ui8_cruise_feature_enabled =
       ui_vars->ui8_cruise_feature_enabled;
 
-#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
   m_eeprom_data.ui8_light_sensor_sensitivity =
       ui_vars->ui8_light_sensor_sensitivity;
+  m_eeprom_data.ui8_light_sensor_hysteresis =
+	  ui_vars->ui8_light_sensor_hysteresis;
 #endif
 
   m_eeprom_data.ui8_coast_brake_adc =
@@ -1036,6 +1079,8 @@ void eeprom_write_variables(void) {
 	  ui_vars->ui16_startup_boost_torque_factor;
   m_eeprom_data.ui8_startup_boost_cadence_step =
 	  ui_vars->ui8_startup_boost_cadence_step;
+  m_eeprom_data.ui8_smooth_start_counter_set =
+	  ui_vars->ui8_smooth_start_counter_set;
   m_eeprom_data.ui8_adc_pedal_torque_offset_adj =
 	  ui_vars->ui8_adc_pedal_torque_offset_adj;
   m_eeprom_data.ui8_adc_pedal_torque_range_adj =

@@ -585,10 +585,10 @@ extern volatile bool g_graphs_ui_update[3];
 #define _S(longstr, shortstr) shortstr
 #endif
 
-#if defined(SW102) || defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+#if defined(SW102) || defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
   #ifdef SW102
     #define SCREENFN_FORCE_LABELS buttons_get_m_state()
-  #elif defined(DISPLAY_860C) || defined(DISPLAY_860C_V12)
+  #elif defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
     #define SCREENFN_FORCE_LABELS false
   #endif
   #define SCREENCLICK_START_EDIT M_CLICK
