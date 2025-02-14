@@ -12,6 +12,12 @@
 #include "eeprom_hw.h"
 #include "main.h"
 #include "mainscreen.h"
+#include "configscreen.h"
+#ifdef SW102
+#include "ble_services.h"
+#else
+#include "stm32f10x_rtc.h"
+#endif
 //#include "lcd_configurations.h"
 
 static eeprom_data_t m_eeprom_data;
@@ -28,14 +34,22 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui8_assist_level = DEFAULT_VALUE_ASSIST_LEVEL,
   .ui16_wheel_perimeter = DEFAULT_VALUE_WHEEL_PERIMETER,
   .ui8_wheel_max_speed = DEFAULT_VALUE_WHEEL_MAX_SPEED,
-//#ifndef SW102
+  .ui32_last_errors = DEFAULT_VALUE_LAST_ERRORS,
+#ifndef SW102
+  .ui32_last_error_time[0] = DEFAULT_VALUE_LAST_ERRORS_TIME,
+  .ui32_last_error_time[1] = DEFAULT_VALUE_LAST_ERRORS_TIME,
+  .ui32_last_error_time[2] = DEFAULT_VALUE_LAST_ERRORS_TIME,
+  .ui32_last_error_time[3] = DEFAULT_VALUE_LAST_ERRORS_TIME,
+  .ui32_seconds_at_shutdown = DEFAULT_VALUE_SECONDS_AT_SHUTDOWN,
+  .ui32_RTC_total_seconds = DEFAULT_VALUE_RTC_TOTAL_SECONDS,
+#endif
   .ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET,
 #ifndef SW102
   .ui16_service_a_distance = DEFAULT_VALUE_SERVICE_A_DISTANCE,
-  .ui16_service_b_hours = DEFAULT_VALUE_SERVICE_B_HOURS,
-  .ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME,
+  .ui16_service_b_distance = DEFAULT_VALUE_SERVICE_B_DISTANCE,
+  //.ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME,
   .ui8_service_a_distance_enable = DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE,
-  .ui8_service_b_hours_enable = DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE,
+  .ui8_service_b_distance_enable = DEFAULT_VALUE_SERVICE_B_DISTANCE_ENABLE,
   .ui32_wh_x10_trip_a_offset = DEFAULT_VALUE_WH_X10_TRIP_A_OFFSET,
   .ui32_wh_x10_trip_b_offset = DEFAULT_VALUE_WH_X10_TRIP_B_OFFSET,
 #endif
@@ -44,6 +58,7 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui32_wh_x10_100_percent = DEFAULT_VALUE_HW_X10_100_PERCENT,
   .ui8_battery_soc_enable = DEAFULT_VALUE_SHOW_NUMERIC_BATTERY_SOC,
   .ui8_battery_max_current = DEFAULT_VALUE_BATTERY_MAX_CURRENT,
+  .ui8_battery_overcurrent_delay = DEFAULT_VALUE_BATTERY_OVERCURRENT_DELAY,
   .ui8_motor_power_limit_div25 = DEFAULT_VALUE_MOTOR_POWER_LIMIT,
   .ui8_target_max_battery_power_div25 = DEFAULT_VALUE_TARGET_MAX_BATTERY_POWER,
   .ui8_motor_max_current = DEFAULT_VALUE_MOTOR_MAX_CURRENT,
@@ -94,6 +109,8 @@ const eeprom_data_t m_eeprom_data_defaults = {
   } },
 
   .ui8_number_of_assist_levels = DEFAULT_VALUE_NUMBER_OF_ASSIST_LEVELS,
+  .ui8_startup_assist_level = DEFAULT_VALUE_STARTUP_ASSIST_LEVEL,
+  .ui8_startup_ridimg_mode = DEFAULT_VALUE_STARTUP_RIDING_MODE,
   .ui8_optional_ADC_function =
   DEFAULT_VALUE_OPTIONAL_ADC_FUNCTION,
   .ui8_motor_temperature_min_value_to_limit =
@@ -158,9 +175,10 @@ const eeprom_data_t m_eeprom_data_defaults = {
 	tripBUsedWhField, // 24
 	tripAWhKmField, // 25
 	tripBWhKmField, // 26
+	motorEfficiencyField // 27 (23 for SW102)
 	
 	wheelSpeedGraph, // 0
-	tripDistanceGraph, // 1
+	motorEfficiencyGraph, // 1
 	cadenceGraph, // 2
 	humanPowerGraph, // 3
 	batteryPowerGraph, // 4
@@ -218,8 +236,8 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .graph_eeprom[VarsWheelSpeed].auto_max_min = GRAPH_AUTO_MAX_MIN_MANUAL,
   .graph_eeprom[VarsWheelSpeed].max = 350, // 35 km/h
   .graph_eeprom[VarsWheelSpeed].min = 0,
-
-  .graph_eeprom[VarsTripDistance].auto_max_min = GRAPH_AUTO_MAX_MIN_AUTO,
+  //.graph_eeprom[VarsTripDistance].auto_max_min = GRAPH_AUTO_MAX_MIN_AUTO,
+  .graph_eeprom[VarsMotorEfficiency].auto_max_min = GRAPH_AUTO_MAX_MIN_SEMI_AUTO,
   .graph_eeprom[VarsCadence].auto_max_min = GRAPH_AUTO_MAX_MIN_AUTO,
   .graph_eeprom[VarsHumanPower].auto_max_min = GRAPH_AUTO_MAX_MIN_AUTO,
   .graph_eeprom[VarsBatteryPower].auto_max_min = GRAPH_AUTO_MAX_MIN_AUTO,
@@ -233,13 +251,11 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .graph_eeprom[VarsMotorPWM].auto_max_min = GRAPH_AUTO_MAX_MIN_SEMI_AUTO,
   .graph_eeprom[VarsMotorFOC].auto_max_min = GRAPH_AUTO_MAX_MIN_AUTO,
 
-  .tripDistanceField_x_axis_scale_config = GRAPH_X_AXIS_SCALE_AUTO,
-
   .wheelSpeedField_auto_thresholds = FIELD_THRESHOLD_MANUAL,
   .wheelSpeedField_config_error_threshold = 350,
   .wheelSpeedField_config_warn_threshold = 300,
   .wheelSpeedField_x_axis_scale_config = GRAPH_X_AXIS_SCALE_AUTO,
-
+  .motorEfficiencyField_x_axis_scale_config = GRAPH_X_AXIS_SCALE_AUTO,
   .cadenceField_auto_thresholds = FIELD_THRESHOLD_AUTO,
   .cadenceField_x_axis_scale_config = GRAPH_X_AXIS_SCALE_AUTO,
   .batteryPowerField_auto_thresholds = FIELD_THRESHOLD_AUTO,
@@ -260,6 +276,9 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .pwmDutyField_x_axis_scale_config = GRAPH_X_AXIS_SCALE_AUTO,
   .motorFOCField_auto_thresholds = FIELD_THRESHOLD_AUTO,
   .motorFOCField_x_axis_scale_config = GRAPH_X_AXIS_SCALE_AUTO,
+  .ui8_motor_efficiency_auto_thresholds = DEFAULT_VALUE_MOTOR_EFFICIENCY_AUTO_TRESHOLDS,
+  .ui8_motor_efficiency_error_threshold = DEFAULT_VALUE_MOTOR_EFFICIENCY_ERROR_TRESHOLD,
+  .ui8_motor_efficiency_warn_threshold = DEFAULT_VALUE_MOTOR_EFFICIENCY_WARN_TRESHOLD,
 #endif
 
   .ui8_street_mode_speed_limit = DEFAULT_STREET_MODE_SPEED_LIMIT,
@@ -300,7 +319,7 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui16_trip_a_auto_reset_hours = DEFAULT_VALUE_TRIP_A_AUTO_RESET_HOURS,
 #endif
 
-  .ui32_trip_a_distance_x1000 = DEFAULT_VALUE_TRIP_DISTANCE,
+  .ui32_trip_a_distance_x10 = DEFAULT_VALUE_TRIP_DISTANCE,
   .ui32_trip_a_time = DEFAULT_VALUE_TRIP_TIME,
   .ui16_trip_a_max_speed_x10 = DEFAULT_VALUE_TRIP_MAX_SPEED,
 
@@ -309,7 +328,8 @@ const eeprom_data_t m_eeprom_data_defaults = {
   .ui16_trip_b_auto_reset_hours = DEFAULT_VALUE_TRIP_B_AUTO_RESET_HOURS,
 #endif
 
-  .ui32_trip_b_distance_x1000 = DEFAULT_VALUE_TRIP_DISTANCE,
+  //.ui32_trip_b_distance_x1000 = DEFAULT_VALUE_TRIP_DISTANCE,
+  .ui32_trip_b_distance_x10 = DEFAULT_VALUE_TRIP_DISTANCE,
   .ui32_trip_b_time = DEFAULT_VALUE_TRIP_TIME,
   .ui16_trip_b_max_speed_x10 = DEFAULT_VALUE_TRIP_MAX_SPEED,
 
@@ -351,10 +371,10 @@ void eeprom_init() {
 			m_eeprom_data.ui32_wh_x10_total_offset = DEFAULT_VALUE_WH_X10_TOTAL_OFFSET;
 #ifndef SW102
 			m_eeprom_data.ui16_service_a_distance = DEFAULT_VALUE_SERVICE_A_DISTANCE;
-			m_eeprom_data.ui16_service_b_hours = DEFAULT_VALUE_SERVICE_B_HOURS;
-			m_eeprom_data.ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME;
+			m_eeprom_data.ui16_service_b_distance = DEFAULT_VALUE_SERVICE_B_DISTANCE;
+			//m_eeprom_data.ui16_service_b_time = DEFAULT_VALUE_SERVICE_B_TIME;
 			m_eeprom_data.ui8_service_a_distance_enable = DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE;
-			m_eeprom_data.ui8_service_b_hours_enable = DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE;
+			m_eeprom_data.ui8_service_b_distance_enable = DEFAULT_VALUE_SERVICE_B_DISTANCE_ENABLE;
 #endif
 			m_eeprom_data.ui8_temperature_sensor_type = DEFAULT_VALUE_TEMPERATURE_SENSOR_TYPE;
 			
@@ -415,6 +435,27 @@ void eeprom_init() {
 			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][7] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_8;
 			m_eeprom_data.ui8_assist_level_factor[eMTB_MODE][8] = DEFAULT_VALUE_EMTB_ASSIST_LEVEL_9;
 			
+		  case EEPROM_0x50_VERSION:
+			m_eeprom_data.ui8_startup_assist_level = DEFAULT_VALUE_STARTUP_ASSIST_LEVEL;
+			m_eeprom_data.ui8_startup_ridimg_mode = DEFAULT_VALUE_STARTUP_RIDING_MODE;
+			ui8_g_configuration_trip_a_reset = 1;
+			ui8_g_configuration_trip_b_reset = 1;
+			m_eeprom_data.ui32_last_errors = DEFAULT_VALUE_LAST_ERRORS;
+			m_eeprom_data.ui8_battery_overcurrent_delay = DEFAULT_VALUE_BATTERY_OVERCURRENT_DELAY;
+#ifndef SW102
+			for (uint8_t i = 0; i < 4; i++) {
+				m_eeprom_data.ui32_last_error_time[i] = DEFAULT_VALUE_LAST_ERRORS_TIME;
+			}
+			m_eeprom_data.ui32_seconds_at_shutdown = DEFAULT_VALUE_SECONDS_AT_SHUTDOWN;
+			m_eeprom_data.ui32_RTC_total_seconds = DEFAULT_VALUE_RTC_TOTAL_SECONDS;
+			m_eeprom_data.batteryPowerUsageField_x_axis_scale_config = GRAPH_X_AXIS_SCALE_AUTO;
+			m_eeprom_data.batteryPowerUsageField_auto_thresholds = FIELD_THRESHOLD_AUTO;
+			m_eeprom_data.motorEfficiencyField_x_axis_scale_config = GRAPH_X_AXIS_SCALE_AUTO;
+			m_eeprom_data.graph_eeprom[VarsMotorEfficiency].auto_max_min = GRAPH_AUTO_MAX_MIN_SEMI_AUTO;
+			m_eeprom_data.ui8_motor_efficiency_auto_thresholds = DEFAULT_VALUE_MOTOR_EFFICIENCY_AUTO_TRESHOLDS;
+			m_eeprom_data.ui8_motor_efficiency_error_threshold = DEFAULT_VALUE_MOTOR_EFFICIENCY_ERROR_TRESHOLD;
+			m_eeprom_data.ui8_motor_efficiency_warn_threshold = DEFAULT_VALUE_MOTOR_EFFICIENCY_WARN_TRESHOLD;
+#endif
 		  case EEPROM_VERSION:
 			// reset password
 			if(m_eeprom_data.ui8_bit_data_3 & 64) {
@@ -490,19 +531,13 @@ void eeprom_init_variables(void) {
 	ui_vars->ui8_password_enabled =
 			m_eeprom_data.ui8_bit_data_3 & 1;
  
-//#ifndef SW102
 	ui_vars->ui8_config_shortcut_key_enabled =
 			(m_eeprom_data.ui8_bit_data_3 & 2) >> 1;
 	ui_vars->ui8_field_weakening_feature_enabled =	  
 			(m_eeprom_data.ui8_bit_data_3 & 4) >> 2;
 	ui_vars->ui8_startup_assist_feature_enabled =
 			(m_eeprom_data.ui8_bit_data_3 & 8) >> 3;
-/*
-#else
-	ui_vars->ui8_config_shortcut_key_enabled = 1;
-	ui_vars->ui8_field_weakening_feature_enabled = 1;
-	ui_vars->ui8_startup_assist_feature_enabled = 1;
-#endif */
+
 	ui_vars->ui8_startup_boost_at_zero =
 			(m_eeprom_data.ui8_bit_data_3 & 16) >> 4;
 	ui_vars->ui8_brake_input =
@@ -511,13 +546,39 @@ void eeprom_init_variables(void) {
 			(m_eeprom_data.ui8_bit_data_3 & 64) >> 6;
 	ui_vars->ui8_password_changed =
 			(m_eeprom_data.ui8_bit_data_3 & 128) >> 7;
-
-	ui_vars->ui8_riding_mode = m_eeprom_data.ui8_riding_mode;
-	ui_vars->ui8_assist_level = m_eeprom_data.ui8_assist_level;
+	
+	if (m_eeprom_data.ui8_startup_ridimg_mode == 0) {
+		ui_vars->ui8_riding_mode = m_eeprom_data.ui8_riding_mode;
+	}
+	else {
+		ui_vars->ui8_riding_mode =
+			m_eeprom_data.ui8_startup_ridimg_mode;
+	}
+	ui_vars->ui8_startup_ridimg_mode = m_eeprom_data.ui8_startup_ridimg_mode;
+			
+	if (m_eeprom_data.ui8_startup_assist_level == 0) {
+		ui_vars->ui8_assist_level =
+			m_eeprom_data.ui8_assist_level;
+	}
+	else {
+		ui_vars->ui8_assist_level =
+			m_eeprom_data.ui8_startup_assist_level;
+	}
+	ui_vars->ui8_startup_assist_level =
+			m_eeprom_data.ui8_startup_assist_level;
+	
 	ui_vars->ui16_wheel_perimeter = m_eeprom_data.ui16_wheel_perimeter;
 	ui_vars->ui8_wheel_max_speed = m_eeprom_data.ui8_wheel_max_speed;
-		
-//#ifndef SW102
+	
+	ui_vars->ui32_last_errors = m_eeprom_data.ui32_last_errors;
+#ifndef SW102	
+	for (uint8_t i = 0; i < 4; i++) {
+		ui_vars->ui32_last_error_time[i] = m_eeprom_data.ui32_last_error_time[i];
+	}
+	ui_vars->ui32_seconds_at_shutdown = m_eeprom_data.ui32_seconds_at_shutdown;
+	rt_vars->ui32_RTC_total_seconds = m_eeprom_data.ui32_RTC_total_seconds;
+#endif
+
 	ui_vars->ui32_wh_x10_total_offset = m_eeprom_data.ui32_wh_x10_total_offset;
 #ifndef SW102	
 	ui_vars->ui32_wh_x10_trip_a_offset = m_eeprom_data.ui32_wh_x10_trip_a_offset;
@@ -536,6 +597,8 @@ void eeprom_init_variables(void) {
       m_eeprom_data.ui8_target_max_battery_power_div25;
 	ui_vars->ui8_battery_max_current =
 			m_eeprom_data.ui8_battery_max_current;
+	ui_vars->ui8_battery_overcurrent_delay =
+			m_eeprom_data.ui8_battery_overcurrent_delay;
 	ui_vars->ui8_motor_max_current =
       m_eeprom_data.ui8_motor_max_current;
 	ui_vars->ui8_motor_current_min_adc =
@@ -548,9 +611,8 @@ void eeprom_init_variables(void) {
 			m_eeprom_data.ui8_throttle_feature_enabled;
 	ui_vars->ui8_cruise_feature_enabled =
 			m_eeprom_data.ui8_cruise_feature_enabled;
-	
 	ui_vars->ui8_number_of_assist_levels =
-			m_eeprom_data.ui8_number_of_assist_levels;
+			m_eeprom_data.ui8_number_of_assist_levels;		
 	ui_vars->ui8_optional_ADC_function = m_eeprom_data.ui8_optional_ADC_function;
 	ui_vars->ui8_motor_temperature_min_value_to_limit =
 			m_eeprom_data.ui8_motor_temperature_min_value_to_limit;
@@ -592,13 +654,24 @@ void eeprom_init_variables(void) {
     g_graphVars[i].max = m_eeprom_data.graph_eeprom[i].max;
     g_graphVars[i].min = m_eeprom_data.graph_eeprom[i].min;
   }
-  tripDistanceGraph.rw->graph.x_axis_scale_config = m_eeprom_data.tripDistanceField_x_axis_scale_config;
+  //tripDistanceGraph.rw->graph.x_axis_scale_config = m_eeprom_data.tripDistanceField_x_axis_scale_config;
+  //graph_x_axis_scale_config_t temp = GRAPH_X_AXIS_SCALE_15M;
+  //if (tripDistanceGraph.rw->graph.x_axis_scale_config != GRAPH_X_AXIS_SCALE_AUTO) {
+  //  temp = tripDistanceGraph.rw->graph.x_axis_scale_config;
+  //}
+  //tripDistanceGraph.rw->graph.x_axis_scale = temp;
+  
+  ui_vars->ui8_motor_efficiency_auto_thresholds = m_eeprom_data.ui8_motor_efficiency_auto_thresholds;
+  ui_vars->ui8_motor_efficiency_error_threshold = m_eeprom_data.ui8_motor_efficiency_error_threshold;
+  ui_vars->ui8_motor_efficiency_warn_threshold = m_eeprom_data.ui8_motor_efficiency_warn_threshold;
+  
+  motorEfficiencyGraph.rw->graph.x_axis_scale_config = m_eeprom_data.motorEfficiencyField_x_axis_scale_config;
   graph_x_axis_scale_config_t temp = GRAPH_X_AXIS_SCALE_15M;
-  if (tripDistanceGraph.rw->graph.x_axis_scale_config != GRAPH_X_AXIS_SCALE_AUTO) {
-    temp = tripDistanceGraph.rw->graph.x_axis_scale_config;
+  if (motorEfficiencyGraph.rw->graph.x_axis_scale_config != GRAPH_X_AXIS_SCALE_AUTO) {
+    temp = motorEfficiencyGraph.rw->graph.x_axis_scale_config;
   }
-  tripDistanceGraph.rw->graph.x_axis_scale = temp;
-
+  motorEfficiencyGraph.rw->graph.x_axis_scale = temp;
+  
   g_vars[VarsWheelSpeed].auto_thresholds = m_eeprom_data.wheelSpeedField_auto_thresholds;
   g_vars[VarsWheelSpeed].config_error_threshold = m_eeprom_data.wheelSpeedField_config_error_threshold;
   g_vars[VarsWheelSpeed].config_warn_threshold = m_eeprom_data.wheelSpeedField_config_warn_threshold;
@@ -608,7 +681,7 @@ void eeprom_init_variables(void) {
     temp = wheelSpeedGraph.rw->graph.x_axis_scale_config;
   }
   wheelSpeedGraph.rw->graph.x_axis_scale = temp;
-
+  
   g_vars[VarsCadence].auto_thresholds = m_eeprom_data.cadenceField_auto_thresholds;
   g_vars[VarsCadence].config_error_threshold = m_eeprom_data.cadenceField_config_error_threshold;
   g_vars[VarsCadence].config_warn_threshold = m_eeprom_data.cadenceField_config_warn_threshold;
@@ -708,7 +781,7 @@ void eeprom_init_variables(void) {
     temp = pwmDutyGraph.rw->graph.x_axis_scale_config;
   }
   pwmDutyGraph.rw->graph.x_axis_scale = temp;
-
+  
   g_vars[VarsMotorFOC].auto_thresholds = m_eeprom_data.motorFOCField_auto_thresholds;
   g_vars[VarsMotorFOC].config_error_threshold = m_eeprom_data.motorFOCField_config_error_threshold;
   g_vars[VarsMotorFOC].config_warn_threshold = m_eeprom_data.motorFOCField_config_warn_threshold;
@@ -780,45 +853,42 @@ void eeprom_init_variables(void) {
   ui_vars->ui16_saved_password = m_eeprom_data.ui16_saved_password;
   
 #ifndef SW102
-  rt_vars->ui32_service_a_distance =
+  rt_vars->ui16_service_a_distance =
     m_eeprom_data.ui16_service_a_distance;
-  rt_vars->ui32_service_b_hours =
-    m_eeprom_data.ui16_service_b_hours;
-  rt_vars->ui16_service_b_time =
-    m_eeprom_data.ui16_service_b_time;
+  rt_vars->ui16_service_b_distance =
+    m_eeprom_data.ui16_service_b_distance;
+  //rt_vars->ui16_service_b_time =
+  //  m_eeprom_data.ui16_service_b_time;
   ui_vars->ui8_service_a_distance_enable =
     m_eeprom_data.ui8_service_a_distance_enable;
-  ui_vars->ui8_service_b_hours_enable =
-    m_eeprom_data.ui8_service_b_hours_enable;
+  ui_vars->ui8_service_b_distance_enable =
+    m_eeprom_data.ui8_service_b_distance_enable;
 
   ui_vars->ui8_trip_a_auto_reset =
     m_eeprom_data.ui8_trip_a_auto_reset;
   ui_vars->ui16_trip_a_auto_reset_hours =
     m_eeprom_data.ui16_trip_a_auto_reset_hours;
-  rt_vars->ui32_trip_a_last_update_time =
+  ui_vars->ui32_trip_a_last_update_time =
     m_eeprom_data.ui32_trip_a_last_update_time;
   ui_vars->ui8_trip_b_auto_reset =
     m_eeprom_data.ui8_trip_b_auto_reset;
   ui_vars->ui16_trip_b_auto_reset_hours =
     m_eeprom_data.ui16_trip_b_auto_reset_hours;
-  rt_vars->ui32_trip_b_last_update_time =
+  ui_vars->ui32_trip_b_last_update_time =
     m_eeprom_data.ui32_trip_b_last_update_time;
 #endif
 
-  // trip A values should reside on RT vars
-  rt_vars->ui32_trip_a_distance_x1000 =
-      m_eeprom_data.ui32_trip_a_distance_x1000;
-  rt_vars->ui32_trip_b_distance_x1000 =
-      m_eeprom_data.ui32_trip_b_distance_x1000;
-  rt_vars->ui32_trip_a_time =
+  rt_vars->ui32_trip_a_distance_x10 =
+      m_eeprom_data.ui32_trip_a_distance_x10;
+  rt_vars->ui32_trip_b_distance_x10 =
+      m_eeprom_data.ui32_trip_b_distance_x10;
+  ui_vars->ui32_trip_a_time =
       m_eeprom_data.ui32_trip_a_time;
-
-  // trip B values should reside on RT vars
-  rt_vars->ui32_trip_b_time =
+  ui_vars->ui32_trip_b_time =
       m_eeprom_data.ui32_trip_b_time;
-  rt_vars->ui16_trip_a_max_speed_x10 =
+  ui_vars->ui16_trip_a_max_speed_x10 =
       m_eeprom_data.ui16_trip_a_max_speed_x10;
-  rt_vars->ui16_trip_b_max_speed_x10 =
+  ui_vars->ui16_trip_b_max_speed_x10 =
       m_eeprom_data.ui16_trip_b_max_speed_x10;
 
 }
@@ -860,8 +930,15 @@ void eeprom_write_variables(void) {
 	m_eeprom_data.ui8_assist_level = ui_vars->ui8_assist_level;
 	m_eeprom_data.ui16_wheel_perimeter = ui_vars->ui16_wheel_perimeter;
 	m_eeprom_data.ui8_wheel_max_speed = ui_vars->ui8_wheel_max_speed;
-	
-//#ifndef SW102
+	m_eeprom_data.ui32_last_errors = ui_vars->ui32_last_errors;
+#ifndef SW102
+	for (uint8_t i = 0; i < 4; i++) {
+		m_eeprom_data.ui32_last_error_time[i] = ui_vars->ui32_last_error_time[i];
+	}
+	m_eeprom_data.ui32_seconds_at_shutdown = RTC_GetCounter();
+	m_eeprom_data.ui32_RTC_total_seconds = ui_vars->ui32_RTC_total_seconds;
+#endif
+
 	// save total & trip Wh
 	m_eeprom_data.ui32_wh_x10_total_offset = ui_vars->ui32_wh_x10_total;
 #ifndef SW102
@@ -881,6 +958,8 @@ void eeprom_write_variables(void) {
 		ui_vars->ui8_target_max_battery_power_div25;
 	m_eeprom_data.ui8_battery_max_current =
 		ui_vars->ui8_battery_max_current;
+	m_eeprom_data.ui8_battery_overcurrent_delay =
+		ui_vars->ui8_battery_overcurrent_delay;
 	m_eeprom_data.ui8_motor_max_current =
 		ui_vars->ui8_motor_max_current;
 	m_eeprom_data.ui8_motor_current_min_adc =
@@ -905,6 +984,10 @@ void eeprom_write_variables(void) {
 	}
 	m_eeprom_data.ui8_number_of_assist_levels =
 			ui_vars->ui8_number_of_assist_levels;
+	m_eeprom_data.ui8_startup_assist_level =
+			ui_vars->ui8_startup_assist_level;
+	m_eeprom_data.ui8_startup_ridimg_mode =
+			ui_vars->ui8_startup_ridimg_mode;	
 	m_eeprom_data.ui8_motor_temperature_min_value_to_limit =
 			ui_vars->ui8_motor_temperature_min_value_to_limit;
 	m_eeprom_data.ui8_motor_temperature_max_value_to_limit =
@@ -935,6 +1018,11 @@ void eeprom_write_variables(void) {
   m_eeprom_data.wheelSpeedField_config_error_threshold = g_vars[VarsWheelSpeed].config_error_threshold;
   m_eeprom_data.wheelSpeedField_config_warn_threshold = g_vars[VarsWheelSpeed].config_warn_threshold;
   m_eeprom_data.wheelSpeedField_x_axis_scale_config = wheelSpeedGraph.rw->graph.x_axis_scale_config;
+
+  m_eeprom_data.ui8_motor_efficiency_auto_thresholds = ui_vars->ui8_motor_efficiency_auto_thresholds;
+  m_eeprom_data.ui8_motor_efficiency_error_threshold = ui_vars->ui8_motor_efficiency_error_threshold;
+  m_eeprom_data.ui8_motor_efficiency_warn_threshold = ui_vars->ui8_motor_efficiency_warn_threshold;
+  m_eeprom_data.motorEfficiencyField_x_axis_scale_config = motorEfficiencyGraph.rw->graph.x_axis_scale_config;
 
   m_eeprom_data.cadenceField_auto_thresholds = g_vars[VarsCadence].auto_thresholds;
   m_eeprom_data.cadenceField_config_error_threshold = g_vars[VarsCadence].config_error_threshold;
@@ -1023,26 +1111,32 @@ void eeprom_write_variables(void) {
 			
 #ifndef SW102
   m_eeprom_data.ui16_service_a_distance =
-    (uint16_t)ui_vars->ui32_service_a_distance;
-  m_eeprom_data.ui16_service_b_hours =
-    (uint16_t)ui_vars->ui32_service_b_hours;
-  m_eeprom_data.ui16_service_b_time =
-    ui_vars->ui16_service_b_time;
+    ui_vars->ui16_service_a_distance;
+  m_eeprom_data.ui16_service_b_distance =
+    ui_vars->ui16_service_b_distance;
+  //m_eeprom_data.ui16_service_b_time =
+  //  ui_vars->ui16_service_b_time;
   m_eeprom_data.ui8_service_a_distance_enable =
     ui_vars->ui8_service_a_distance_enable;
-  m_eeprom_data.ui8_service_b_hours_enable =
-    ui_vars->ui8_service_b_hours_enable;
+  m_eeprom_data.ui8_service_b_distance_enable =
+    ui_vars->ui8_service_b_distance_enable;
 
   m_eeprom_data.ui8_trip_a_auto_reset =
     ui_vars->ui8_trip_a_auto_reset;
   m_eeprom_data.ui16_trip_a_auto_reset_hours = 
     ui_vars->ui16_trip_a_auto_reset_hours;
-  m_eeprom_data.ui32_trip_a_last_update_time =
-    ui_vars->ui32_trip_a_last_update_time;
+  if (ui8_trip_started) {
+	m_eeprom_data.ui32_trip_a_last_update_time =
+		ui_vars->ui32_RTC_total_seconds;
+  }
+  else {
+	m_eeprom_data.ui32_trip_a_last_update_time =
+		ui_vars->ui32_trip_a_last_update_time;
+  }
 #endif
 
-  m_eeprom_data.ui32_trip_a_distance_x1000 =
-      ui_vars->ui32_trip_a_distance_x1000;
+  m_eeprom_data.ui32_trip_a_distance_x10 =
+      ui_vars->ui32_trip_a_distance_x10;
   m_eeprom_data.ui32_trip_a_time =
       ui_vars->ui32_trip_a_time;
   m_eeprom_data.ui16_trip_a_max_speed_x10 =
@@ -1053,12 +1147,20 @@ void eeprom_write_variables(void) {
     ui_vars->ui8_trip_b_auto_reset;
   m_eeprom_data.ui16_trip_b_auto_reset_hours = 
     ui_vars->ui16_trip_b_auto_reset_hours;
-  m_eeprom_data.ui32_trip_b_last_update_time =
-    ui_vars->ui32_trip_b_last_update_time;
+  if (ui8_trip_started) {
+	m_eeprom_data.ui32_trip_b_last_update_time =
+		ui_vars->ui32_RTC_total_seconds;
+  }
+  else {
+	m_eeprom_data.ui32_trip_b_last_update_time =
+		ui_vars->ui32_trip_b_last_update_time;
+  }
 #endif
 
-  m_eeprom_data.ui32_trip_b_distance_x1000 =
-      ui_vars->ui32_trip_b_distance_x1000;
+  //m_eeprom_data.ui32_trip_b_distance_x1000 =
+  //    ui_vars->ui32_trip_b_distance_x1000;
+  m_eeprom_data.ui32_trip_b_distance_x10 =
+      ui_vars->ui32_trip_b_distance_x10;
   m_eeprom_data.ui32_trip_b_time =
       ui_vars->ui32_trip_b_time;
 

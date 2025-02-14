@@ -2520,13 +2520,16 @@ void screen_init(void) {
   wheelSpeedField.rw->editable.number.config_warn_threshold = &g_vars[VarsWheelSpeed].config_warn_threshold;
   wheelSpeedField.rw->editable.number.config_error_threshold = &g_vars[VarsWheelSpeed].config_error_threshold;
 
-  tripADistanceField.rw->editable.number.auto_thresholds = &g_vars[VarsTripDistance].auto_thresholds;
-  tripADistanceField.rw->editable.number.config_warn_threshold = &g_vars[VarsTripDistance].config_warn_threshold;
-  tripADistanceField.rw->editable.number.config_error_threshold = &g_vars[VarsTripDistance].config_error_threshold;
+  //tripADistanceField.rw->editable.number.auto_thresholds = &g_vars[VarsTripDistance].auto_thresholds;
+  //tripADistanceField.rw->editable.number.config_warn_threshold = &g_vars[VarsTripDistance].config_warn_threshold;
+  //tripADistanceField.rw->editable.number.config_error_threshold = &g_vars[VarsTripDistance].config_error_threshold;
+  motorEfficiencyField.rw->editable.number.auto_thresholds = &g_vars[VarsMotorEfficiency].auto_thresholds;
+  motorEfficiencyField.rw->editable.number.config_warn_threshold = &g_vars[VarsMotorEfficiency].config_warn_threshold;
+  motorEfficiencyField.rw->editable.number.config_error_threshold = &g_vars[VarsMotorEfficiency].config_error_threshold;
 
-  odoField.rw->editable.number.auto_thresholds = &g_vars[VarsOdometer].auto_thresholds;
-  odoField.rw->editable.number.config_warn_threshold = &g_vars[VarsOdometer].config_warn_threshold;
-  odoField.rw->editable.number.config_error_threshold = &g_vars[VarsOdometer].config_error_threshold;
+  //odoField.rw->editable.number.auto_thresholds = &g_vars[VarsOdometer].auto_thresholds;
+  //odoField.rw->editable.number.config_warn_threshold = &g_vars[VarsOdometer].config_warn_threshold;
+  //odoField.rw->editable.number.config_error_threshold = &g_vars[VarsOdometer].config_error_threshold;
 
   cadenceField.rw->editable.number.auto_thresholds = &g_vars[VarsCadence].auto_thresholds;
   cadenceField.rw->editable.number.config_warn_threshold = &g_vars[VarsCadence].config_warn_threshold;

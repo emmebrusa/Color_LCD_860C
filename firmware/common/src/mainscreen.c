@@ -31,14 +31,30 @@
 #include "stm32f10x_rtc.h"
 #endif
 
+// Error state
+#define NO_ERROR                                0	// "None"
+#define ERROR_NOT_INIT                          1	// "Motor not init"
+#define ERROR_TORQUE_SENSOR                     2	// "Torque Fault"
+#define ERROR_CADENCE_SENSOR		    		3	// "Cadence fault"
+#define ERROR_MOTOR_BLOCKED     				4	// "Motor Blocked"
+#define ERROR_THROTTLE						 	5	// "Throttle Fault"
+#define ERROR_FATAL                             6	// "Fatal error" or  "Undervoltage"
+#define ERROR_BATTERY_OVERCURRENT               7	// "Overcurrent"
+#define ERROR_SPEED_SENSOR	                    8	// "Speed fault"
+#define ERROR_UNDERVOLTAGE						9   // "Undervoltage"
+
 // TSDZ2 20.1
 #define WALK_ASSIST_THRESHOLD_SPEED_X10			70  // 70 -> 7.0 km/h
 #define CRUISE_THRESHOLD_SPEED_X10				90  // 90 -> 9.0 km/h
+#define WARNING_MESSAGE_MIN_TIME				30  // 0.1 sec
 static uint8_t ui8_set_riding_mode = 0; // 0=disabled, 1=enabled
 static uint8_t ui8_configuration_flag = 0;
 static uint8_t ui8_reset_password_counter = 100;
-volatile uint8_t ui8_display_ready_counter = 60;
-volatile uint8_t ui8_voltage_ready_counter = 60;
+static uint8_t ui8_waiting_display_ready_counter = 60;
+volatile uint8_t ui8_waiting_voltage_ready_counter = 120;
+static uint8_t ui8_cut_off_warning_min_time = 0;
+static uint8_t ui8_speed_limit_warning_min_time = 0;
+static uint8_t ui8_last_error_states = 0;
 volatile uint8_t ui8_battery_soc_used[100] = { 1, 1, 2, 3, 4, 5, 6, 8, 10, 12, 13, 15, 17, 19, 21, 23, 25, 26, 28,
 	29, 31, 33, 34, 36, 38, 39, 41, 42, 44, 46, 47, 49, 51, 52, 53, 54, 55, 57, 58, 59, 61, 62, 63, 65, 66,	67,
 	69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 85, 86, 87, 87, 88, 88, 89, 89, 90, 90,
@@ -47,10 +63,6 @@ volatile uint8_t ui8_battery_soc_used[100] = { 1, 1, 2, 3, 4, 5, 6, 8, 10, 12, 1
 volatile uint8_t ui8_battery_soc_index = 0;
 
 #ifndef SW102
-// service warning
-uint8_t ui8_service_a_distance_warning = 0;
-uint8_t ui8_service_b_hours_warning = 0;
-
 // calculate Wh trip A and B
 uint32_t ui32_wh_x10_reset_trip_a = 0;
 uint32_t ui32_wh_x10_reset_trip_b = 0;
@@ -111,8 +123,9 @@ void batteryPower(void);
 void pedalPower(void);
 #ifndef SW102
 void thresholds(void);
-void ServiceWarning(void);
 #endif
+void update_last_errors(void);
+void history_errors_reset(void);
 
 /// set to true if this boot was caused because we had a watchdog failure, used to show user the problem in the fault line
 bool wd_failure_detected;
@@ -136,13 +149,13 @@ Field wheelSpeedField = FIELD_READONLY_UINT("speed", &ui_vars.ui16_wheel_speed_x
 // Note: this field is special, the string it is pointing to must be in RAM so we can change it later
 Field upTimeField = FIELD_READONLY_STRING(_S("up time", "up time"), (char [MAX_TIMESTR_LEN]){ 0 });
 
-Field tripADistanceField = FIELD_READONLY_UINT(_S("A trip dist", "A trip dis"), &ui_vars.ui32_trip_a_distance_x100, "km", false, .div_digits = 2);
+Field tripADistanceField = FIELD_READONLY_UINT(_S("A trip dist", "A trip dis"), &ui_vars.ui32_trip_a_distance_x10, "km", false, .div_digits = 1);
 // Note: this field is special, the string it is pointing to must be in RAM so we can change it later
 Field tripATimeField = FIELD_READONLY_STRING(_S("A trip time", "A trip tim"), (char [MAX_TIMESTR_LEN]){ 0 });
 Field tripAAvgSpeedField = FIELD_READONLY_UINT(_S("A avg speed", "A avgspeed"), &ui_vars.ui16_trip_a_avg_speed_x10, "kph", true, .div_digits = 1);
 Field tripAMaxSpeedField = FIELD_READONLY_UINT(_S("A max speed", "A maxspeed"), &ui_vars.ui16_trip_a_max_speed_x10, "kph", true, .div_digits = 1);
 
-Field tripBDistanceField = FIELD_READONLY_UINT(_S("B trip dist", "B trip dis"), &ui_vars.ui32_trip_b_distance_x100, "km", false, .div_digits = 2);
+Field tripBDistanceField = FIELD_READONLY_UINT(_S("B trip dist", "B trip dis"), &ui_vars.ui32_trip_b_distance_x10, "km", false, .div_digits = 1);
 // Note: this field is special, the string it is pointing to must be in RAM so we can change it later
 Field tripBTimeField = FIELD_READONLY_STRING(_S("B trip time", "B trip tim"), (char [MAX_TIMESTR_LEN]){ 0 });
 Field tripBAvgSpeedField = FIELD_READONLY_UINT(_S("B avg speed", "B avgspeed"), &ui_vars.ui16_trip_b_avg_speed_x10, "kph", true, .div_digits = 1);
@@ -162,6 +175,7 @@ Field motorErpsField = FIELD_READONLY_UINT(_S("motor speed", "mot speed"), &ui_v
 Field pwmDutyField = FIELD_READONLY_UINT(_S("motor pwm", "mot pwm"), &ui_vars.ui8_duty_cycle, "", true, .div_digits = 0);
 Field motorFOCField = FIELD_READONLY_UINT(_S("motor foc", "mot foc"), &ui_vars.ui8_foc_angle, "", true, .div_digits = 0);
 Field batteryPowerUsageField = FIELD_READONLY_UINT((char [MAX_BATTERY_POWER_USAGE_STR_LEN]){ 0 }, &ui_vars.battery_energy_km_value_x100, "Wh/km", true, .div_digits = 2);
+Field motorEfficiencyField = FIELD_READONLY_UINT("efficiency", &ui_vars.ui8_motor_efficiency, "", true, .div_digits = 0);
 #ifndef SW102
 Field tripAUsedWhField = FIELD_READONLY_UINT(_S("A used Wh", "A Wh"), &ui_vars.ui32_wh_x10_trip_a, "", true, .div_digits = 1);
 Field tripBUsedWhField = FIELD_READONLY_UINT(_S("B used Wh", "B Wh"), &ui_vars.ui32_wh_x10_trip_b, "", true, .div_digits = 1);
@@ -204,6 +218,8 @@ Field *customizables[] = {
 	&tripAWhKmField, // 25
 	&tripBWhKmField, // 26
 #endif
+	&motorEfficiencyField, // 27 (23 for SW102)
+
 	NULL
 };
 
@@ -212,8 +228,9 @@ Field *customizables[] = {
 // only in one place.
 // Though I'm not sure why you need l2 vs l3 vars in this case.
 Field wheelSpeedFieldGraph = FIELD_READONLY_UINT("speed", &rt_vars.ui16_wheel_speed_x10, "km", false, .div_digits = 1);
-Field tripDistanceFieldGraph = FIELD_READONLY_UINT("trip distance", &rt_vars.ui32_trip_a_distance_x1000, "km", false, .div_digits = 1);
-Field odoFieldGraph = FIELD_READONLY_UINT("odometer", &rt_vars.ui32_odometer_x10, "km", false, .div_digits = 1);
+//Field tripDistanceFieldGraph = FIELD_READONLY_UINT("A trip distance", &ui_vars.ui32_trip_a_distance_x10, "km", false, .div_digits = 1);
+Field motorEfficiencyFieldGraph = FIELD_READONLY_UINT("efficiency", &rt_vars.ui8_motor_efficiency, "", false);
+//Field odoFieldGraph = FIELD_READONLY_UINT("odometer", &rt_vars.ui32_odometer_x10, "km", false, .div_digits = 1);
 Field cadenceFieldGraph = FIELD_READONLY_UINT("cadence", &rt_vars.ui8_pedal_cadence_filtered, "", false);
 Field humanPowerFieldGraph = FIELD_READONLY_UINT("human power", &rt_vars.ui16_pedal_power_filtered, "", false);
 Field batteryPowerFieldGraph = FIELD_READONLY_UINT("motor power", &rt_vars.ui16_battery_power_filtered, "", false);
@@ -231,7 +248,8 @@ Field batteryPowerUsageFieldGraph = FIELD_READONLY_UINT((char [MAX_BATTERY_POWER
 
 #ifndef SW102 // we don't have any graphs yet on SW102, possibly move this into mainscreen_850.c
 Field wheelSpeedGraph = FIELD_GRAPH(&wheelSpeedFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsWheelSpeed]);
-Field tripDistanceGraph = FIELD_GRAPH(&tripDistanceFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsTripDistance]);
+//Field tripDistanceGraph = FIELD_GRAPH(&tripDistanceFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsTripDistance]);
+Field motorEfficiencyGraph = FIELD_GRAPH(&motorEfficiencyFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsMotorEfficiency]);
 Field cadenceGraph = FIELD_GRAPH(&cadenceFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsCadence]);
 Field humanPowerGraph = FIELD_GRAPH(&humanPowerFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsHumanPower]);
 Field batteryPowerGraph = FIELD_GRAPH(&batteryPowerFieldGraph, .min_threshold = -1, .graph_vars = &g_graphVars[VarsBatteryPower]);
@@ -250,7 +268,8 @@ Field motorFOCGraph = FIELD_GRAPH(&motorFOCFieldGraph, .min_threshold = -1, .gra
 #ifndef SW102
 Field graph1 = FIELD_CUSTOMIZABLE(&ui_vars.graphs_field_selectors[0],
   &wheelSpeedGraph,
-  &tripDistanceGraph,
+  //&tripDistanceGraph,
+  &motorEfficiencyGraph,
   &cadenceGraph,
   &humanPowerGraph,
   &batteryPowerGraph,
@@ -266,7 +285,8 @@ Field graph1 = FIELD_CUSTOMIZABLE(&ui_vars.graphs_field_selectors[0],
 
 Field graph2 = FIELD_CUSTOMIZABLE(&ui_vars.graphs_field_selectors[1],
   &wheelSpeedGraph,
-  &tripDistanceGraph,
+  //&tripDistanceGraph,
+  &motorEfficiencyGraph,
   &cadenceGraph,
   &humanPowerGraph,
   &batteryPowerGraph,
@@ -282,7 +302,8 @@ Field graph2 = FIELD_CUSTOMIZABLE(&ui_vars.graphs_field_selectors[1],
 
 Field graph3 = FIELD_CUSTOMIZABLE(&ui_vars.graphs_field_selectors[2],
   &wheelSpeedGraph,
-  &tripDistanceGraph,
+  //&tripDistanceGraph,
+  &motorEfficiencyGraph,
   &cadenceGraph,
   &humanPowerGraph,
   &batteryPowerGraph,
@@ -834,6 +855,7 @@ void screen_clock(void) {
 #if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 	auto_on_off_lights();
 #endif
+	history_errors_reset();
     DisplayResetToDefaults();
     TripMemoriesReset();
 	BatterySOCReset();
@@ -849,7 +871,6 @@ void screen_clock(void) {
     streetMode();
 #ifndef SW102
     thresholds();
-	ServiceWarning();
 #endif
     screenUpdate();
   }
@@ -858,10 +879,10 @@ void screen_clock(void) {
 #ifndef SW102
 void thresholds(void) {
 
-  odoField.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
-  odoFieldGraph.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
-  tripADistanceField.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
-  tripDistanceFieldGraph.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
+  //odoField.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
+  //odoFieldGraph.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
+  //tripADistanceField.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
+  //tripDistanceFieldGraph.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
   batteryPowerUsageField.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
   batteryPowerUsageFieldGraph.rw->editable.number.auto_thresholds = FIELD_THRESHOLD_DISABLED;
 
@@ -883,8 +904,26 @@ void thresholds(void) {
     g_graphVars[VarsWheelSpeed].min = 0;
   }
 
+  if (ui_vars.ui8_motor_efficiency_auto_thresholds == EFFICIENCY_TRESHOLDS_AUTO) {
+	motorEfficiencyField.rw->editable.number.error_threshold =
+		motorEfficiencyFieldGraph.rw->editable.number.error_threshold = 58;
+	motorEfficiencyField.rw->editable.number.warn_threshold =
+		motorEfficiencyFieldGraph.rw->editable.number.warn_threshold = 68;
+  } else if (ui_vars.ui8_motor_efficiency_auto_thresholds == EFFICIENCY_TRESHOLDS_MANUAL) {
+	motorEfficiencyField.rw->editable.number.error_threshold =
+		motorEfficiencyFieldGraph.rw->editable.number.error_threshold = ui_vars.ui8_motor_efficiency_error_threshold;
+	motorEfficiencyField.rw->editable.number.warn_threshold =
+		motorEfficiencyFieldGraph.rw->editable.number.warn_threshold = ui_vars.ui8_motor_efficiency_warn_threshold;
+  }
+
+  if (g_graphVars[VarsMotorEfficiency].auto_max_min == GRAPH_AUTO_MAX_MIN_SEMI_AUTO) {
+	g_graphVars[VarsMotorEfficiency].max = 100;
+	g_graphVars[VarsMotorEfficiency].min = 0;
+  }
+
   if (*cadenceField.rw->editable.number.auto_thresholds == FIELD_THRESHOLD_AUTO) {
-    if (ui_vars.ui8_torque_sensor_calibration_feature_enabled) {
+    // and/or field weakening enebled?
+	if (ui_vars.ui8_torque_sensor_calibration_feature_enabled) {
       cadenceField.rw->editable.number.error_threshold =
         cadenceFieldGraph.rw->editable.number.error_threshold = 120; // max value for motor assistance
       cadenceField.rw->editable.number.warn_threshold =
@@ -1041,17 +1080,10 @@ void thresholds(void) {
   }
 
   if (*pwmDutyField.rw->editable.number.auto_thresholds == FIELD_THRESHOLD_AUTO) {
-    if (ui_vars.ui8_torque_sensor_calibration_feature_enabled) {
-      pwmDutyField.rw->editable.number.error_threshold =
-          pwmDutyFieldGraph.rw->editable.number.error_threshold = 100;
-      pwmDutyField.rw->editable.number.warn_threshold =
-          pwmDutyFieldGraph.rw->editable.number.warn_threshold = 90;
-    } else {
-      pwmDutyField.rw->editable.number.error_threshold =
-          pwmDutyFieldGraph.rw->editable.number.error_threshold = 100;
-      pwmDutyField.rw->editable.number.warn_threshold =
-          pwmDutyFieldGraph.rw->editable.number.warn_threshold = 90;
-    }
+	pwmDutyField.rw->editable.number.error_threshold =
+		pwmDutyFieldGraph.rw->editable.number.error_threshold = 100;
+	pwmDutyField.rw->editable.number.warn_threshold =
+		pwmDutyFieldGraph.rw->editable.number.warn_threshold = 90;
   } else if (*pwmDutyField.rw->editable.number.auto_thresholds == FIELD_THRESHOLD_MANUAL) {
     pwmDutyField.rw->editable.number.error_threshold =
         pwmDutyFieldGraph.rw->editable.number.error_threshold = *pwmDutyField.rw->editable.number.config_error_threshold;
@@ -1060,13 +1092,8 @@ void thresholds(void) {
   }
 
   if (g_graphVars[VarsMotorPWM].auto_max_min == GRAPH_AUTO_MAX_MIN_SEMI_AUTO) {
-    if (ui_vars.ui8_torque_sensor_calibration_feature_enabled) {
-      g_graphVars[VarsMotorPWM].max = 100;
-      g_graphVars[VarsMotorPWM].min = 0;
-    } else {
-      g_graphVars[VarsMotorPWM].max = 100;
-      g_graphVars[VarsMotorPWM].min = 0;
-    }
+	g_graphVars[VarsMotorPWM].max = 100;
+	g_graphVars[VarsMotorPWM].min = 0;
   }
 
   if (*motorFOCField.rw->editable.number.auto_thresholds == FIELD_THRESHOLD_AUTO) {
@@ -1102,7 +1129,7 @@ void trip_time(void){
 
 void updateTripTime(uint32_t tripTime, Field *field) {
   char timestr[MAX_TIMESTR_LEN]; // 12:13
-  uint32_t ui32_temp = tripTime % 86399; // 86399 = seconds in 1 day minus 1s
+  uint32_t ui32_temp = tripTime % 86400; // 86400 = seconds in 1 day minus 1s
 
   // Calculate trip time
   uint8_t hours = ui32_temp / 3600;
@@ -1138,14 +1165,16 @@ void setWarning(ColorOp color, const char *str) {
 }
 
 #ifndef SW102
-static const char *motorErrors[] = { "None", "Motor not init", "Torque Fault", "Cadence Fault", "Motor Blocked", "Throttle Fault", "Fatal Error", "Overcurrent", "Speed Fault"};
+static const char *motorErrors[] = { "0", "Motor not init", "Torque Fault", "Cadence Fault", "Motor Blocked", "Throttle Fault", "Fatal Error", "Overcurrent", "Speed Fault", "Undervoltage"};
+static const char *serviceMode[] = { "0", "chain", "brakes", "shocks", " "};
 #else
-static const char *motorErrors[] = { "None", "Mot no ini", "Torq Fault", "CadenFault", "MotBlocked", "Thro Fault", "FatalError", "Overcurren", "SpeedFault"};
+static const char *motorErrors[] = { "0", "Mot no ini", "Torq Fault", "CadenFault", "MotBlocked", "Thro Fault", "FatalError", "Overcurren", "SpeedFault", "Undervolt"};
 #endif
 
 void warnings(void) {
   //uint32_t motor_temp_limit = ui_vars.ui8_temperature_limit_feature_enabled & 1;
   uint8_t ui8_motorErrorsIndex;
+  uint8_t ui8_assist_whit_error_flag;
 
   switch (g_motor_init_state) {
     case MOTOR_INIT_ERROR_SET_CONFIGURATIONS:
@@ -1161,30 +1190,28 @@ void warnings(void) {
   }
   
   // voltage ready counter
-  if(ui8_voltage_ready_counter)
-	  ui8_voltage_ready_counter--;
+  if(ui8_waiting_voltage_ready_counter)
+	ui8_waiting_voltage_ready_counter--;
   
-  // display ready counter
-  if(ui8_display_ready_counter)
-	  ui8_display_ready_counter--;
+  // voltage cut-off warning, min time
+  if(ui8_voltage_cut_off_flag)
+	ui8_cut_off_warning_min_time = WARNING_MESSAGE_MIN_TIME;
+  if((!ui8_voltage_cut_off_flag)&&(ui8_cut_off_warning_min_time))
+	ui8_cut_off_warning_min_time--;
+  
+  // speed limit warning, min time
+  if(ui8_speed_limit_high_flag)
+	ui8_speed_limit_warning_min_time = WARNING_MESSAGE_MIN_TIME; 
+  if((!ui8_speed_limit_high_flag)&&(ui8_speed_limit_warning_min_time))
+	ui8_speed_limit_warning_min_time--;
 
-#ifndef SW102
-	// service warning in yellow
-	if(ui8_display_ready_counter) {
-		if(ui8_service_a_distance_warning) {
-			setWarning(ColorWarning, "Service A");
-			return;
-		}
-		else if(ui8_service_b_hours_warning) {
-			setWarning(ColorWarning, "Service B");
-			return;
-		}
-	}
-#endif
+  // display ready counter
+  if(ui8_waiting_display_ready_counter)
+	ui8_waiting_display_ready_counter--;
 
   // display riding mode
   if(((ui8_set_riding_mode)&&(!ui_vars.ui8_assist_level))||
-    (ui8_display_ready_counter)) {
+    (ui8_waiting_display_ready_counter)) {
 	  switch (ui_vars.ui8_riding_mode) {
 		case 1: setWarning(ColorNormal, "POWER ASSIST"); break;
 		case 2: setWarning(ColorNormal, "TORQUE ASSIST"); break;
@@ -1195,42 +1222,86 @@ void warnings(void) {
 	  return;
   }
 
-  // High priorty faults in red
-  if (ui_vars.ui8_error_states) {
-    if (ui_vars.ui8_error_states & 1)
-      ui8_motorErrorsIndex = 1;
-    else if (ui_vars.ui8_error_states & 2)
-		ui8_motorErrorsIndex = 2;
-    else if (ui_vars.ui8_error_states & 4)
-      ui8_motorErrorsIndex = 3;
-    else if (ui_vars.ui8_error_states & 8)
-      ui8_motorErrorsIndex = 4;
-    else if (ui_vars.ui8_error_states & 16)
-      ui8_motorErrorsIndex = 5;
-    else if (ui_vars.ui8_error_states & 32)
-      ui8_motorErrorsIndex = 6;
-    else if (ui_vars.ui8_error_states & 64)
-      ui8_motorErrorsIndex = 7;
-    else if (ui_vars.ui8_error_states & 128)
-      ui8_motorErrorsIndex = 8;
-	
-    char str[24];
-    snprintf(str, sizeof(str), "%s%d%s%s", "e: ", ui8_motorErrorsIndex, " ", motorErrors[ui8_motorErrorsIndex]);
+#ifndef SW102
+	// service warning in yellow
+	// displayed at power on after riding mode message
+	if(ui8_waiting_voltage_ready_counter) {
+		if((ui_vars.ui8_service_a_distance_enable)&&(!rt_vars.ui16_service_a_distance)) {
+			char str[24];
+			snprintf(str, sizeof(str), "%s%s", "Service A ", serviceMode[ui_vars.ui8_service_a_distance_enable]);
+			setWarning(ColorWarning, str);
+			return;
+		}
+		else if((ui_vars.ui8_service_b_distance_enable)&&(!rt_vars.ui16_service_b_distance)) {
+			char str[24];
+			snprintf(str, sizeof(str), "%s%s", "Service B ", serviceMode[ui_vars.ui8_service_b_distance_enable]);
+			setWarning(ColorWarning, str);
+			return;
+		}
+	}
+#endif
+
+	// High priorty faults in red
+	if (ui_vars.ui8_error_states) {
+		if (ui_vars.ui8_error_states & 1)
+			ui8_motorErrorsIndex = ERROR_NOT_INIT;
+		else if (ui_vars.ui8_error_states & 2)
+			ui8_motorErrorsIndex = ERROR_TORQUE_SENSOR;
+		else if (ui_vars.ui8_error_states & 4)
+			ui8_motorErrorsIndex = ERROR_CADENCE_SENSOR;
+		else if (ui_vars.ui8_error_states & 8)
+			ui8_motorErrorsIndex = ERROR_MOTOR_BLOCKED;
+		else if (ui_vars.ui8_error_states & 16)
+			ui8_motorErrorsIndex = ERROR_THROTTLE;
+		else if (ui_vars.ui8_error_states & 32) {
+			if (ui8_voltage_shutdown_flag)
+				ui8_motorErrorsIndex = ERROR_UNDERVOLTAGE;
+			else
+				ui8_motorErrorsIndex = ERROR_FATAL;
+		}
+		else if (ui_vars.ui8_error_states & 64)
+			ui8_motorErrorsIndex = ERROR_BATTERY_OVERCURRENT;
+		else if (ui_vars.ui8_error_states & 128)
+			ui8_motorErrorsIndex = ERROR_SPEED_SENSOR;
+		
+		char str[24];
+		snprintf(str, sizeof(str), "%s%d%s%s", "e: ", ui8_motorErrorsIndex, " ", motorErrors[ui8_motorErrorsIndex]);
 		setWarning(ColorError, str);
-		return;
+		
+		if (ui_vars.ui8_error_states != ui8_last_error_states) {
+			ui8_last_error_states = ui_vars.ui8_error_states;
+						
+			ui_vars.ui32_last_errors = ui_vars.ui32_last_errors << 8;
+			ui_vars.ui32_last_errors |= ui8_motorErrorsIndex;
+#ifndef SW102			
+			for (uint8_t i = 3; i > 0; i--) {
+				ui_vars.ui32_last_error_time[i] = ui_vars.ui32_last_error_time[i - 1];
+			}
+			ui_vars.ui32_last_error_time[0] = ui_vars.ui32_RTC_total_seconds;
+#endif
+		}		
+		if ((ui_vars.ui8_assist_whit_error_enabled)
+		  &&((ui8_motorErrorsIndex == ERROR_TORQUE_SENSOR)
+			|| (ui8_motorErrorsIndex == ERROR_CADENCE_SENSOR)
+			|| (ui8_motorErrorsIndex == ERROR_SPEED_SENSOR))) {
+				ui8_assist_whit_error_flag = 1;
+		}
+		else {
+				return;
+		}
 	}
 
 	if(((ui_vars.ui8_optional_ADC_function == TEMPERATURE_CONTROL)&&
 	   (ui_vars.ui8_motor_temperature >= ui_vars.ui8_motor_temperature_max_value_to_limit))
-	 ||((ui_vars.ui8_braking)&&(ui_vars.ui8_brake_input == TEMPERATURE))){
+	 ||((ui_vars.ui8_braking)&&(ui_vars.ui8_brake_input == TEMPERATURE))) {
 			setWarning(ColorError, _S("Temp Shutdown", "Temp Shut"));
 			return;
 	}
 
 	// If we had a watchdog failure, show it forever - so user will report a bug
 	if (wd_failure_detected) {
-    setWarning(ColorError, "Report Bug!");
-    return;
+		setWarning(ColorError, "Report Bug!");
+		return;
 	}
 
 	// warn faults in yellow
@@ -1238,6 +1309,18 @@ void warnings(void) {
        (ui_vars.ui8_motor_temperature >= ui_vars.ui8_motor_temperature_min_value_to_limit)) {
 			setWarning(ColorWarning, _S("Temp Warning", "Temp Warn"));
 			return;
+	}
+	
+	// voltage cut-off warning
+	if (ui8_cut_off_warning_min_time) {
+		setWarning(ColorWarning, _S("Voltage cut-off", "V cut-off"));
+		return;
+	}
+	
+	// speed limit exceeded warning
+	if (ui8_speed_limit_warning_min_time) {
+		setWarning(ColorWarning, _S("Speed limit", "SpeedLimit"));
+		return;
 	}
 
 	// All of the following possible 'faults' are low priority
@@ -1247,7 +1330,9 @@ void warnings(void) {
 		return;
 	}
 	else if((ui_vars.ui8_startup_assist_feature_enabled)
-	  &&(ui_vars.ui8_startup_assist)&&(ui_vars.ui8_assist_level)) {
+	  &&(ui_vars.ui8_startup_assist)
+	  &&(ui8_startup_assist_lights_restore)
+	  &&(ui_vars.ui8_assist_level)) {
 		setWarning(ColorNormal, "STARTUP");
 		return;
 	}
@@ -1267,8 +1352,10 @@ void warnings(void) {
 		setWarning(ColorNormal, "LIGHT");
 		return;
 	}
-
-	setWarning(ColorNormal, "");
+	
+	if (!ui8_assist_whit_error_flag) {
+		setWarning(ColorNormal, "");
+	}
 }
 
 void battery_soc(void) {
@@ -1354,8 +1441,8 @@ void startup_assist_state(void) {
       ui8_startup_assist_timeout = 4; // 0.4 seconds
 	  
 	  if (--ui8_startup_assist_maxtime == 0)
-		  ui8_startup_assist_maxtime++;
-		  //ui_vars.ui8_startup_assist = 0;
+		  ui8_startup_assist_maxtime++; // not max time
+		  //ui_vars.ui8_startup_assist = 0; // max time
 	  
 	  if((ui8_startup_assist_maxtime <= 80) // 2 seconds (100 - 80)
 		&&(!ui8_startup_assist_lights_restore)) {
@@ -1363,11 +1450,13 @@ void startup_assist_state(void) {
 			ui_vars.ui8_lights = !ui_vars.ui8_lights;
 			set_lcd_backlight();
 	  }
-	
-    } else if (buttons_get_up_state() == 0 && --ui8_startup_assist_timeout == 0) {
-      ui_vars.ui8_startup_assist = 0;
     }
-  } else {
+	else if (buttons_get_up_state() == 0 
+		&& --ui8_startup_assist_timeout == 0) {
+			ui_vars.ui8_startup_assist = 0;
+    }
+  }
+  else {
     ui_vars.ui8_startup_assist = 0;
   }
 }
@@ -1417,6 +1506,8 @@ static bool appwide_onpress(buttons_events_t events)
 	 (ui_vars.ui8_assist_level)))
   {
 	    ui8_configuration_flag = 1;
+		update_last_errors();
+
 		screenShow(&configScreen);
 		return true;
   }
@@ -1497,12 +1588,18 @@ void onSetConfigurationBatteryTotalWh(uint32_t v) {
 }
 
 void DisplayResetToDefaults(void) {
-
+  
   if((ui8_g_configuration_display_reset_to_defaults)
 	&&(ui_vars.ui8_confirm_default_reset)) {
+		uint32_t ui32_odometer_x10_temp = ui_vars.ui32_odometer_x10;
+		uint32_t ui32_wh_x10_total_offset_temp = ui_vars.ui32_wh_x10_total_offset;
+		
 		ui8_g_configuration_display_reset_to_defaults = 0;
 		ui_vars.ui8_confirm_default_reset = 0;
 		eeprom_init_defaults();
+		ui_vars.ui32_odometer_x10 = ui32_odometer_x10_temp;
+		ui_vars.ui32_wh_x10_total_offset = ui32_wh_x10_total_offset_temp;
+		ui_vars.ui32_wh_x10_total = 0;
 		ui_vars.ui16_street_mode_power_limit = ui_vars.ui8_street_mode_power_limit_div25 * 25;
 		ui_vars.ui16_target_max_battery_power = ui_vars.ui8_target_max_battery_power_div25 * 25;
   }
@@ -1517,36 +1614,28 @@ void TripMemoriesReset(void) {
     ui8_g_configuration_trip_a_reset = 0;
 
 #ifndef SW102
-    uint32_t current_time = RTC_GetCounter();
-
-    rt_vars.ui32_trip_a_last_update_time = current_time;
-	
 	ui_vars.ui32_wh_x10_trip_a_offset = 0;
 	ui32_wh_x10_reset_trip_a = ui32_wh_x10_since_power_on;
 #endif
 
-    rt_vars.ui32_trip_a_distance_x1000 = 0;
-    rt_vars.ui32_trip_a_time = 0;
-    rt_vars.ui16_trip_a_avg_speed_x10 = 0;
-    rt_vars.ui16_trip_a_max_speed_x10 = 0;
+	rt_vars.ui32_trip_a_distance_x10 = 0;
+    ui_vars.ui32_trip_a_time = 0;
+    ui_vars.ui16_trip_a_avg_speed_x10 = 0;
+    ui_vars.ui16_trip_a_max_speed_x10 = 0;
   }
 
   if (ui8_g_configuration_trip_b_reset) {
     ui8_g_configuration_trip_b_reset = 0;
 
 #ifndef SW102
-    uint32_t current_time = RTC_GetCounter();
-
-    rt_vars.ui32_trip_b_last_update_time = current_time;
-	
 	ui_vars.ui32_wh_x10_trip_b_offset = 0;
 	ui32_wh_x10_reset_trip_b = ui32_wh_x10_since_power_on;
 #endif
 
-    rt_vars.ui32_trip_b_distance_x1000 = 0;
-    rt_vars.ui32_trip_b_time = 0;
-    rt_vars.ui16_trip_b_avg_speed_x10 = 0;
-    rt_vars.ui16_trip_b_max_speed_x10 = 0;
+	rt_vars.ui32_trip_b_distance_x10 = 0;
+    ui_vars.ui32_trip_b_time = 0;
+    ui_vars.ui16_trip_b_avg_speed_x10 = 0;
+    ui_vars.ui16_trip_b_max_speed_x10 = 0;
   }
 }
 
@@ -1592,25 +1681,6 @@ void SetDefaultWeight(void) {
 	}
 }
 
-#ifndef SW102
-void ServiceWarning(void) {
-	// service a distance
-	if((ui_vars.ui8_service_a_distance_enable)&&(!rt_vars.ui32_service_a_distance)) {
-		ui8_service_a_distance_warning = 1;
-	}
-	else {
-		ui8_service_a_distance_warning = 0;
-	}
-	
-	// service b hours
-	if((ui_vars.ui8_service_b_hours_enable)&&(!rt_vars.ui32_service_b_hours)) {
-		ui8_service_b_hours_warning = 1;
-	}
-	else {
-		ui8_service_b_hours_warning = 0;
-	}
-}
-#endif
 
 void DisplayResetBluetoothPeers(void) {
 #ifdef SW102
@@ -1716,16 +1786,27 @@ void onSetConfigurationWheelOdometer(uint32_t v) {
   else
 	rt_vars.ui32_odometer_x10 = v;
 }
+
+void onSetConfigurationChargeCycles(uint32_t v) {
+  // let's update the main variable used for calculations of charge cycles
+  rt_vars.ui16_battery_charge_cycles_x10 = v;
+  ui_vars.ui32_wh_x10_total = 0;
+  ui_vars.ui32_wh_x10_total_offset = (uint32_t) (rt_vars.ui16_battery_charge_cycles_x10
+	* (rt_vars.ui32_wh_x10_100_percent / 10));
+}
 #ifndef SW102
-void onSetConfigurationServiceDistance(uint32_t v) {
+void onSetConfigurationServiceDistanceA(uint32_t v) {
   if (screenConvertMiles)
-	rt_vars.ui32_service_a_distance = (v * 161) / 100;
+	rt_vars.ui16_service_a_distance = (v * 161) / 100;
   else
-	rt_vars.ui32_service_a_distance = v;
+	rt_vars.ui16_service_a_distance = v;
 }
 
-void onSetConfigurationServiceHours(uint32_t v) {
-	rt_vars.ui32_service_b_hours = v;
+void onSetConfigurationServiceDistanceB(uint32_t v) {
+  if (screenConvertMiles)
+	rt_vars.ui16_service_b_distance = (v * 161) / 100;
+  else
+	rt_vars.ui16_service_b_distance = v;
 }
 #endif
 void batteryPower(void) {
@@ -1733,12 +1814,14 @@ void batteryPower(void) {
   ui16_m_battery_power_filtered = ui_vars.ui16_battery_power;
 
   // loose resolution under 200W
-  if (ui16_m_battery_power_filtered < 200) {
+  if (ui16_m_battery_power_filtered < 250) {
+	ui16_m_battery_power_filtered += 5;
     ui16_m_battery_power_filtered /= 10;
     ui16_m_battery_power_filtered *= 10;
   }
   // loose resolution under 400W
   else if (ui16_m_battery_power_filtered < 500) {
+	ui16_m_battery_power_filtered += 10;
     ui16_m_battery_power_filtered /= 20;
     ui16_m_battery_power_filtered *= 20;
   }
@@ -1748,13 +1831,16 @@ void pedalPower(void) {
 
   ui16_m_pedal_power_filtered = ui_vars.ui16_pedal_power;
 
-  if (ui16_m_pedal_power_filtered > 500) {
-    ui16_m_pedal_power_filtered /= 20;
+  if (ui16_m_pedal_power_filtered > 500) { // 500 ???
+    ui16_m_pedal_power_filtered += 10;
+	ui16_m_pedal_power_filtered /= 20;
     ui16_m_pedal_power_filtered *= 20;
   } else if (ui16_m_pedal_power_filtered > 200) {
+	ui16_m_pedal_power_filtered += 5;
     ui16_m_pedal_power_filtered /= 10;
     ui16_m_pedal_power_filtered *= 10;
   } else if (ui16_m_pedal_power_filtered > 10) {
+	ui16_m_pedal_power_filtered += 2;
     ui16_m_pedal_power_filtered /= 5;
     ui16_m_pedal_power_filtered *= 5;
   }
@@ -1854,7 +1940,9 @@ void auto_on_off_lights(void) {
 #define ADC_LIGHT_SENSOR_LIGHT_DIV100				11 // adc value 1150
 #define ADC_LIGHT_SENSOR_DARK_DIV100				41 // adc value 4090
 #define ADC_LIGHT_SENSOR_SCALE_DIV100	(uint8_t)(ADC_LIGHT_SENSOR_DARK_DIV100 - ADC_LIGHT_SENSOR_LIGHT_DIV100)
-	
+#define LIGHTS_OFF_DELAY_TIME						100 // 10.0 seconds (max 25.5)
+static uint8_t ui8_lights_off_delay_counter = 0;
+
 	if (ui_vars.ui8_light_sensor_enabled) {
 		uint16_t ui16_light_sensor_threshold =
 			(ui_vars.ui8_light_sensor_sensitivity * ADC_LIGHT_SENSOR_SCALE_DIV100)
@@ -1864,12 +1952,55 @@ void auto_on_off_lights(void) {
 		
 		if ((ui16_light_sensor_threshold - ui16_temp) <= adc_light_sensor_get()) {
 			ui_vars.ui8_lights = 1; // dark
+			ui8_lights_off_delay_counter = 0;
 		}
 		else if ((ui16_light_sensor_threshold + ui16_temp) >= adc_light_sensor_get()) {
-			ui_vars.ui8_lights = 0; // light
+			if (ui8_lights_off_delay_counter >= LIGHTS_OFF_DELAY_TIME) {
+				ui_vars.ui8_lights = 0; // light
+			}
+			else {
+				ui8_lights_off_delay_counter++;
+			}
 		}
 		
 		set_lcd_backlight();
 	}
 }
 #endif
+
+void update_last_errors(void) {
+	ui_vars.ui8_last_error[0] = (uint8_t)(ui_vars.ui32_last_errors & 0xff);
+	ui_vars.ui8_last_error[1] = (uint8_t)((ui_vars.ui32_last_errors >> 8) & 0xff);
+	ui_vars.ui8_last_error[2] = (uint8_t)((ui_vars.ui32_last_errors >> 16) & 0xff);
+	ui_vars.ui8_last_error[3] = (uint8_t)((ui_vars.ui32_last_errors >> 24) & 0xff);
+	
+#ifndef SW102
+	// update time since errors
+	for (uint8_t i = 0; i < 4; i++) {
+		// format days.hours
+		if (ui_vars.ui32_last_error_time[i] > 0) {
+			// days
+			ui_vars.ui32_time_since_error[i] = ((ui_vars.ui32_RTC_total_seconds - ui_vars.ui32_last_error_time[i]) / 86400) * 100;
+			// hours
+			ui_vars.ui32_time_since_error[i] += ((ui_vars.ui32_RTC_total_seconds - ui_vars.ui32_last_error_time[i]) % 86400) / 3600;
+		}
+		else {
+			ui_vars.ui32_time_since_error[i] = 0;
+		}
+	}
+#endif
+}
+
+void history_errors_reset(void) {
+	if (ui_vars.ui8_history_errors_reset) {
+		ui_vars.ui8_history_errors_reset = 0;
+		ui_vars.ui32_last_errors = 0;
+#ifndef SW102
+		for (uint8_t i = 0; i < 4; i++) {
+			ui_vars.ui8_last_error[i] = 0;
+			ui_vars.ui32_time_since_error[i] = 0;
+			ui_vars.ui32_last_error_time[i] = 0;
+		}
+#endif
+	}
+}	

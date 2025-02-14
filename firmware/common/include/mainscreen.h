@@ -4,8 +4,7 @@
 
 extern volatile uint8_t ui8_battery_soc_used[100];
 extern volatile uint8_t ui8_battery_soc_index;
-extern volatile uint8_t ui8_display_ready_counter;
-extern volatile uint8_t ui8_voltage_ready_counter;
+extern volatile uint8_t ui8_waiting_voltage_ready_counter;
 
 #ifndef SW102
 // for calculate Wh trip A and B
@@ -55,7 +54,8 @@ extern Field
   motorErpsField,
   pwmDutyField,
   motorFOCField,
-  motorTempGraph,
+  //motorTempGraph,
+  motorEfficiencyField,
   bootStatus2,
 #ifdef SW102
   custom1, custom2,
@@ -72,8 +72,9 @@ extern Field
   warnField,
 
   wheelSpeedGraph,
-  tripDistanceGraph,
-  odoGraph,
+  //tripDistanceGraph,
+  motorEfficiencyGraph,
+  //odoGraph,
   cadenceGraph,
   humanPowerGraph,
   batteryPowerGraph,
@@ -105,9 +106,10 @@ void onSetConfigurationDisplayLcdBacklightOnBrightness(uint32_t v);
 void onSetConfigurationDisplayLcdBacklightOffBrightness(uint32_t v);
 void onSetConfigurationBatteryTotalWh(uint32_t v);
 void onSetConfigurationWheelOdometer(uint32_t v);
+void onSetConfigurationChargeCycles(uint32_t v);
 #ifndef SW102
-void onSetConfigurationServiceDistance(uint32_t v);
-void onSetConfigurationServiceHours(uint32_t v);
+void onSetConfigurationServiceDistanceA(uint32_t v);
+void onSetConfigurationServiceDistanceB(uint32_t v);
 #endif
 void onSetConfigurationBatterySOCUsedWh(uint32_t v);
 void mainScreenOnDirtyClean(void);
@@ -127,4 +129,8 @@ extern bool wd_failure_detected;
 
 extern uint8_t ui8_g_configuration_clock_hours;
 extern uint8_t ui8_g_configuration_clock_minutes;
+
+#define EFFICIENCY_TRESHOLDS_DISABLED						0
+#define EFFICIENCY_TRESHOLDS_MANUAL							1
+#define EFFICIENCY_TRESHOLDS_AUTO							2
 

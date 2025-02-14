@@ -57,6 +57,7 @@ Display Menus (* new items)
 	*Motor acceleration
 	*Motor deceleration
 	*Field weakening
+	*Overcurrent delay
 
   Torque sensor
 	Assist w/o pedal
@@ -77,6 +78,9 @@ Display Menus (* new items)
 	*Default weight
 
   Assist levels
+	Num assist levels
+	*Start assist level
+	*Start riding mode
 	*Power assist
 		*Level 1
 		*Level x
@@ -122,6 +126,16 @@ Display Menus (* new items)
 	Hotkey enable
 
   Various
+	*History errors
+		*Last error 1
+		*Last error 2
+		*Last error 3
+		*Last error 4
+		*Time since err 1
+		*Time since err 2
+		*Time since err 3
+		*Time since err 4
+		*Reset
 	*Light sensor
 	*Light sensitivity %
 	*Light hysteresis %
@@ -131,8 +145,7 @@ Display Menus (* new items)
 	*A service
 	*A service distance
 	*B service
-	*B service hours
-	*OSF motor  v20.1C
+	*B service distance
 
   Display
 	Clock field
@@ -147,6 +160,7 @@ Display Menus (* new items)
 	LCD type
 	Reset to defaults
 	*Confirm reset
+	*OSF motor  v20.1C-5.1
 
   Technical (view only)
 	ADC battery current
@@ -174,12 +188,6 @@ System msg:
   Motor init
   Report Bug!
 
-Warning msg
-  Temp Warning
-  Temp Shutdown
-  Service A
-  Service B
-
 Error msg:
   e 1 Motor not init
   e 2 Torque Fault
@@ -189,5 +197,21 @@ Error msg:
   e 6 Fatal error
   e 7 Overcurrent
   e 8 Speed Fault
+  e 9 Undervoltage
+
+Warning msg
+  Service A (details)
+  Service B (details)
+  Temp Warning
+  Temp Shutdown
+  Voltage cut-off
+  Speed limit
+
+Function msg
+  BRAKE
+  STARTUP
+  WALK
+  CRUISE
+  LIGHTS
 
 

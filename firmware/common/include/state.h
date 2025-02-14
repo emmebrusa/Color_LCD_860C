@@ -15,8 +15,8 @@
 
 // SOC calculation
 #define SOC_CALC_AUTO						0
-#define SOC_CALC_WH							0
-#define SOC_CALC_VOLTS						0
+#define SOC_CALC_WH							1
+#define SOC_CALC_VOLTS						2
 
 // optional ADC function
 #define NOT_IN_USE							0
@@ -109,6 +109,7 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_pedal_weight;
 	uint16_t ui16_pedal_power_x10;
 	uint8_t ui8_duty_cycle;
+	uint8_t ui8_motor_efficiency;
 	uint8_t ui8_error_states;
 	uint16_t ui16_wheel_speed_x10;
 	uint8_t ui8_pedal_cadence;
@@ -116,7 +117,7 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_foc_angle;
 	uint8_t ui8_motor_hall_sensors;
 	uint8_t ui8_motor_temperature;
-	uint32_t ui32_wheel_speed_sensor_tick_counter;
+	//uint32_t ui32_wheel_speed_sensor_tick_counter;
 	uint16_t ui16_battery_voltage_filtered_x10;
 	uint16_t ui16_battery_current_filtered_x5;
 	uint16_t ui16_motor_current_filtered_x5;
@@ -128,7 +129,7 @@ typedef struct rt_vars_struct {
 	uint32_t ui32_wh_sum_x5;
 	uint32_t ui32_wh_sum_counter;
 	uint32_t ui32_wh_x10;
-	uint32_t ui32_wheel_speed_sensor_tick_counter_offset;
+	//uint32_t ui32_wheel_speed_sensor_tick_counter_offset;
 
 //#ifndef SW102
 	//uint32_t ui32_wh_x10_total;
@@ -140,11 +141,11 @@ typedef struct rt_vars_struct {
 	uint32_t ui32_wh_x10_trip_a_offset;
 	uint32_t ui32_wh_x10_trip_b_offset;
 	
-	uint16_t ui32_service_a_distance;
-	uint16_t ui32_service_b_hours;
-	uint16_t ui16_service_b_time;
+	uint16_t ui16_service_a_distance;
+	uint16_t ui16_service_b_distance;
+	//uint16_t ui16_service_b_time;
 	//uint8_t ui8_service_a_distance_enable;
-	//uint8_t ui8_service_b_hours_enable;
+	//uint8_t ui8_service_b_distance_enable;
 #endif
 
 	uint8_t ui8_assist_level;
@@ -183,25 +184,8 @@ typedef struct rt_vars_struct {
 	uint8_t ui8_lcd_backlight_off_brightness;
 	uint32_t ui32_odometer_x10;
 
-#ifndef SW102
-	//uint8_t  ui8_trip_a_auto_reset;
-	//uint16_t ui16_trip_a_auto_reset_hours;
-	uint32_t ui32_trip_a_last_update_time;
-#endif
-	uint32_t ui32_trip_a_distance_x1000;
-	uint32_t ui32_trip_a_time;
-	uint16_t ui16_trip_a_avg_speed_x10;
-	uint16_t ui16_trip_a_max_speed_x10;
-
-#ifndef SW102
-	//uint8_t  ui8_trip_b_auto_reset;
-	//uint16_t ui16_trip_b_auto_reset_hours;
-	uint32_t ui32_trip_b_last_update_time;
-#endif
-	uint32_t ui32_trip_b_distance_x1000;
-	uint32_t ui32_trip_b_time;
-  	uint16_t ui16_trip_b_avg_speed_x10;
-  	uint16_t ui16_trip_b_max_speed_x10;
+	uint32_t ui32_trip_a_distance_x10;
+	uint32_t ui32_trip_b_distance_x10;
 
 	uint8_t ui8_lights;
 	uint8_t ui8_braking;
@@ -248,7 +232,9 @@ typedef struct rt_vars_struct {
   uint8_t ui8_smooth_start_enabled;
   uint8_t ui8_smooth_start_counter_set;
   uint8_t ui8_eMTB_based_on_power;
-  
+#ifndef SW102
+  uint32_t ui32_RTC_total_seconds;
+#endif
   battery_energy_h_km_t battery_energy_h_km;
 } rt_vars_t;
 
@@ -275,6 +261,7 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_pedal_weight_with_offset;  // used in firmware/SW102/src/sw102/ble_service.c
 	uint8_t ui8_pedal_weight;
 	uint8_t ui8_duty_cycle;
+	uint8_t ui8_motor_efficiency;
 	uint8_t ui8_error_states;
 	uint16_t ui16_wheel_speed_x10;
 	uint8_t ui8_pedal_cadence;
@@ -308,11 +295,11 @@ typedef struct ui_vars_struct {
 	uint32_t ui32_wh_x10_trip_a_offset;
 	uint32_t ui32_wh_x10_trip_b_offset;
 	
-	uint16_t ui32_service_a_distance;
-	uint16_t ui32_service_b_hours;
-	uint16_t ui16_service_b_time;
+	uint16_t ui16_service_a_distance;
+	uint16_t ui16_service_b_distance;
+	//uint16_t ui16_service_b_time;
 	uint8_t ui8_service_a_distance_enable;
-	uint8_t ui8_service_b_hours_enable;
+	uint8_t ui8_service_b_distance_enable;
 #endif
 	
 	uint8_t ui8_assist_level;
@@ -373,8 +360,7 @@ typedef struct ui_vars_struct {
 	uint16_t ui16_trip_a_auto_reset_hours;
 	uint32_t ui32_trip_a_last_update_time;
 #endif
-	uint32_t ui32_trip_a_distance_x1000;
-	uint32_t ui32_trip_a_distance_x100;
+	uint32_t ui32_trip_a_distance_x10;
 	uint32_t ui32_trip_a_time;
 	uint16_t ui16_trip_a_avg_speed_x10;
 	uint16_t ui16_trip_a_max_speed_x10;
@@ -384,8 +370,7 @@ typedef struct ui_vars_struct {
 	uint16_t ui16_trip_b_auto_reset_hours;
 	uint32_t ui32_trip_b_last_update_time;
 #endif
-	uint32_t ui32_trip_b_distance_x1000;
-	uint32_t ui32_trip_b_distance_x100;
+	uint32_t ui32_trip_b_distance_x10;
 	uint32_t ui32_trip_b_time;
   	uint16_t ui16_trip_b_avg_speed_x10;
   	uint16_t ui16_trip_b_max_speed_x10;
@@ -414,92 +399,7 @@ typedef struct ui_vars_struct {
 	uint8_t ui8_street_mode_throttle_enabled;
 	uint8_t ui8_street_mode_cruise_enabled;
 	uint8_t ui8_street_mode_hotkey_enabled;
-
-  uint16_t var_speed_graph_auto_max_min;
-  uint16_t var_speed_graph_max_x10;
-  uint16_t var_speed_graph_min_x10;
-  uint16_t var_speed_auto_thresholds;
-  uint16_t var_speed_threshold_max_x10;
-  uint16_t var_speed_threshold_min_x10;
-
-  uint32_t var_trip_distance_graph_auto_max_min_x10;
-  uint32_t var_trip_distance_graph_max_x10;
-  uint32_t var_trip_distance_graph_min_x10;
-
-  uint32_t var_odo_graph_auto_max_min;
-  uint32_t var_odo_graph_max;
-  uint32_t var_odo_graph_min;
-
-  uint8_t var_cadence_graph_auto_max_min;
-  uint8_t var_cadence_graph_max;
-  uint8_t var_cadence_graph_min;
-  uint8_t var_cadence_auto_thresholds;
-  uint8_t var_cadence_threshold_max;
-  uint8_t var_cadence_threshold_min;
-
-  uint8_t var_human_power_graph_auto_max_min;
-  uint8_t var_human_power_graph_max;
-  uint8_t var_human_power_graph_min;
-  uint8_t var_human_power_auto_thresholds;
-  uint8_t var_human_power_threshold_max;
-  uint8_t var_human_power_threshold_min;
-
-  uint8_t var_battery_power_graph_auto_max_min;
-  uint8_t var_battery_power_graph_max;
-  uint8_t var_battery_power_graph_min;
-  uint8_t var_battery_power_auto_thresholds;
-  uint8_t var_battery_power_threshold_max;
-  uint8_t var_battery_power_threshold_min;
-
-  uint8_t var_battery_voltage_graph_auto_max_min;
-  uint8_t var_battery_voltage_graph_max;
-  uint8_t var_battery_voltage_graph_min;
-  uint8_t var_battery_voltage_auto_thresholds;
-  uint8_t var_battery_voltage_threshold_max;
-  uint8_t var_battery_voltage_threshold_min;
-
-  uint8_t var_battery_current_graph_auto_max_min;
-  uint8_t var_battery_current_graph_max;
-  uint8_t var_battery_current_graph_min;
-  uint8_t var_battery_current_auto_thresholds;
-  uint8_t var_battery_current_threshold_max;
-  uint8_t var_battery_current_threshold_min;
-
-  uint8_t var_battery_soc_graph_auto_max_min;
-  uint8_t var_battery_soc_graph_max;
-  uint8_t var_battery_soc_graph_min;
-  uint8_t var_battery_soc_auto_thresholds;
-  uint8_t var_battery_soc_threshold_max;
-  uint8_t var_battery_soc_threshold_min;
-
-  uint8_t var_motor_temp_graph_auto_max_min;
-  uint8_t var_motor_temp_graph_max;
-  uint8_t var_motor_temp_graph_min;
-  uint8_t var_motor_temp_auto_thresholds;
-  uint8_t var_motor_temp_threshold_max;
-  uint8_t var_motor_temp_threshold_min;
-
-  uint8_t var_motor_erps_graph_auto_max_min;
-  uint8_t var_motor_erps_graph_max;
-  uint8_t var_motor_erps_graph_min;
-  uint8_t var_motor_erps_auto_thresholds;
-  uint8_t var_motor_erps_threshold_max;
-  uint8_t var_motor_erps_threshold_min;
-
-  uint8_t var_motor_pwm_graph_auto_max_min;
-  uint8_t var_motor_pwm_graph_max;
-  uint8_t var_motor_pwm_graph_min;
-  uint8_t var_motor_pwm_auto_thresholds;
-  uint8_t var_motor_pwm_threshold_max;
-  uint8_t var_motor_pwm_threshold_min;
-
-  uint8_t var_motor_foc_graph_auto_max_min;
-  uint8_t var_motor_foc_graph_max;
-  uint8_t var_motor_foc_graph_min;
-  uint8_t var_motor_foc_auto_thresholds;
-  uint8_t var_motor_foc_threshold_max;
-  uint8_t var_motor_foc_threshold_min;
-
+	
   uint8_t ui8_pedal_cadence_fast_stop;
   uint8_t ui8_coast_brake_adc;
   uint16_t ui16_adc_battery_current;
@@ -537,6 +437,21 @@ typedef struct ui_vars_struct {
   uint8_t ui8_light_sensor_sensitivity;
   uint8_t ui8_light_sensor_hysteresis;
 #endif
+  uint8_t ui8_startup_assist_level;
+  uint8_t ui8_startup_ridimg_mode;
+  uint32_t ui32_last_errors;
+  uint8_t ui8_last_error[4];
+  uint8_t ui8_history_errors_reset;
+#ifndef SW102
+  uint32_t ui32_time_since_error[4];
+  uint32_t ui32_last_error_time[4];
+  uint32_t ui32_seconds_at_shutdown;
+  uint32_t ui32_RTC_total_seconds;
+  uint8_t ui8_motor_efficiency_auto_thresholds;
+  uint8_t ui8_motor_efficiency_error_threshold;
+  uint8_t ui8_motor_efficiency_warn_threshold;
+#endif
+  uint8_t ui8_battery_overcurrent_delay;
 
 } ui_vars_t;
 
@@ -576,8 +491,11 @@ void prepare_torque_sensor_calibration_table(void);
 
 void reset_wh(void);
 
+extern volatile uint8_t ui8_trip_started;
+extern volatile uint8_t ui8_voltage_cut_off_flag;
+extern volatile uint8_t ui8_voltage_shutdown_flag;
+extern volatile uint8_t ui8_speed_limit_high_flag;
 extern uint8_t ui8_g_battery_soc;
-
 extern uint8_t ui8_g_screen_init_flag;
 
 extern tsdz2_firmware_version_t g_tsdz2_firmware_version;

@@ -85,8 +85,7 @@ static Field batterySOCMenus[] =
 	FIELD_EDITABLE_UINT("Used Wh", &ui_vars.ui32_wh_x10, "whr", 0, 99900, .div_digits = 1, .inc_step = 10, .onSetEditable = onSetConfigurationBatterySOCUsedWh),
 	FIELD_EDITABLE_ENUM("Manual reset", &ui8_g_configuration_battery_soc_reset, "no", "yes"),
 	FIELD_EDITABLE_UINT("Auto reset %", &ui_vars.ui8_battery_soc_auto_reset, "", 0, 100),
-	FIELD_READONLY_UINT("Charge cycles", &ui_vars.ui16_battery_charge_cycles_x10, "", .div_digits = 1),
-	//FIELD_READONLY_UINT("Used total Wh", &ui_vars.ui32_wh_x10_total, "", .div_digits = 1),
+	FIELD_EDITABLE_UINT("Charge cycles", &ui_vars.ui16_battery_charge_cycles_x10, "", 0, UINT16_MAX, .div_digits = 1, .inc_step = 1, .onSetEditable = onSetConfigurationChargeCycles),
 #else
 	FIELD_EDITABLE_ENUM("Text", &ui_vars.ui8_battery_soc_enable, "disable", "SOC %", "volts"),
 	FIELD_EDITABLE_ENUM("Calculation", &ui_vars.ui8_battery_soc_percent_calculation, "auto", "Wh", "volts"),
@@ -95,7 +94,7 @@ static Field batterySOCMenus[] =
 	FIELD_EDITABLE_UINT("Used Wh", &ui_vars.ui32_wh_x10, "whr", 0, 99900, .div_digits = 1, .inc_step = 10, .onSetEditable = onSetConfigurationBatterySOCUsedWh),
 	FIELD_EDITABLE_ENUM("Manual rst", &ui8_g_configuration_battery_soc_reset, "no", "yes"),
 	FIELD_EDITABLE_UINT("Auto rst%", &ui_vars.ui8_battery_soc_auto_reset, "", 0, 100),
-	FIELD_READONLY_UINT("Charge cycl", &ui_vars.ui16_battery_charge_cycles_x10, "", .div_digits = 1),
+	FIELD_EDITABLE_UINT("Charge cycl", &ui_vars.ui16_battery_charge_cycles_x10, "", 0, UINT16_MAX, .div_digits = 1, .inc_step = 10, .onSetEditable = onSetConfigurationChargeCycles),
 #endif
 	FIELD_END };
 
@@ -107,12 +106,14 @@ static Field motorMenus[] =
 	FIELD_EDITABLE_UINT("Motor acceleration", &ui_vars.ui8_motor_acceleration_adjustment, "%", 0, 100, .div_digits = 0),
 	FIELD_EDITABLE_UINT("Motor deceleration", &ui_vars.ui8_motor_deceleration_adjustment, "%", 0, 100, .div_digits = 0),
 	FIELD_EDITABLE_ENUM("Field weakening", &ui_vars.ui8_field_weakening_feature_enabled, "disable", "enable"),
+	FIELD_EDITABLE_ENUM("Overcurrent delay", &ui_vars.ui8_battery_overcurrent_delay, "disable", "1", "2", "3", "4", "5"),
 #else
 	FIELD_EDITABLE_ENUM("Motor volt", &ui_vars.ui8_motor_type, "48V", "36V"),
 	FIELD_EDITABLE_UINT("Power max", &ui_vars.ui16_target_max_battery_power, "watts", 25, 1000, .div_digits = 0, .inc_step = 25, .hide_fraction = true),
 	FIELD_EDITABLE_UINT("Motor acc", &ui_vars.ui8_motor_acceleration_adjustment, "%", 0, 100, .div_digits = 0),
 	FIELD_EDITABLE_UINT("Motor dec", &ui_vars.ui8_motor_deceleration_adjustment, "%", 0, 100, .div_digits = 0),
 	FIELD_EDITABLE_ENUM("Field weak", &ui_vars.ui8_field_weakening_feature_enabled, "disable", "enable"),
+	FIELD_EDITABLE_ENUM("Overcurren", &ui_vars.ui8_battery_overcurrent_delay, "disable", "1", "2", "3", "4", "5"),
 #endif
 	FIELD_END };
 
@@ -219,12 +220,16 @@ static Field eMTBAssistMenus[] =
 {
 #ifndef SW102
 	FIELD_EDITABLE_UINT("Num assist levels", &ui_vars.ui8_number_of_assist_levels, "", 1, 9),
+	FIELD_EDITABLE_ENUM("Start assist level", &ui_vars.ui8_startup_assist_level, "last", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
+	FIELD_EDITABLE_ENUM("Start riding mode", &ui_vars.ui8_startup_ridimg_mode, "last", "power", "torque", "cadence", "emtb", "hybrid"),
 	FIELD_SCROLLABLE("Power assist", powerAssistMenus),
 	FIELD_SCROLLABLE("Torque assist", torqueAssistMenus),
 	FIELD_SCROLLABLE("Cadence assist", cadenceAssistMenus),
 	FIELD_SCROLLABLE("eMTB assist", eMTBAssistMenus),
 #else
 	FIELD_EDITABLE_UINT("Num Levels", &ui_vars.ui8_number_of_assist_levels, "", 1, 9),
+	FIELD_EDITABLE_ENUM("StartLevel", &ui_vars.ui8_startup_assist_level, "last", "1", "2", "3", "4", "5", "6", "7", "8", "9"),
+	FIELD_EDITABLE_ENUM("Start mode", &ui_vars.ui8_startup_ridimg_mode, "last", "power", "torque", "cadence", "emtb", "hybrid"),
 	FIELD_SCROLLABLE("Power", powerAssistMenus),
 	FIELD_SCROLLABLE("Torque", torqueAssistMenus),
 	FIELD_SCROLLABLE("Cadence", cadenceAssistMenus),
@@ -327,9 +332,24 @@ static Field displayMenus[] =
 	FIELD_READONLY_UINT(_S("OSF motor     v20.1C", "Mot v20.1C"), &g_tsdz2_firmware_version.patch, "", false, .div_digits = 1),
 	FIELD_END };
 
+static Field errorsMenus[] =
+{
+	FIELD_READONLY_UINT(_S("Last error 1", "Last err 1"), &ui_vars.ui8_last_error[0], ""),
+	FIELD_READONLY_UINT(_S("Last error 2", "Last err 2"), &ui_vars.ui8_last_error[1], ""),
+	FIELD_READONLY_UINT(_S("Last error 3", "Last err 3"), &ui_vars.ui8_last_error[2], ""),
+	FIELD_READONLY_UINT(_S("Last error 4", "Last err 4"), &ui_vars.ui8_last_error[3], ""),
+#ifndef SW102
+	FIELD_READONLY_UINT("Time since err 1", &ui_vars.ui32_time_since_error[0], "", .div_digits = 2),
+	FIELD_READONLY_UINT("Time since err 2", &ui_vars.ui32_time_since_error[1], "", .div_digits = 2),
+	FIELD_READONLY_UINT("Time since err 3", &ui_vars.ui32_time_since_error[2], "", .div_digits = 2),
+	FIELD_READONLY_UINT("Time since err 4", &ui_vars.ui32_time_since_error[3], "", .div_digits = 2),
+#endif
+	FIELD_EDITABLE_ENUM("Reset", &ui_vars.ui8_history_errors_reset, "no", "yes"),
+	FIELD_END };
 	
 static Field variousMenus[] =
 {
+	FIELD_SCROLLABLE("History errors", errorsMenus),
 #if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 	FIELD_EDITABLE_ENUM("Light sensor", &ui_vars.ui8_light_sensor_enabled, "disable", "enable"),
 	FIELD_EDITABLE_UINT("Light sensitivity %", &ui_vars.ui8_light_sensor_sensitivity, "", 1, 100),
@@ -338,17 +358,16 @@ static Field variousMenus[] =
 #ifndef SW102
 	FIELD_EDITABLE_UINT("Lights configuration", &ui_vars.ui8_lights_configuration, "", 0, 8),
     FIELD_EDITABLE_UINT("Virtual throttle step", &ui_vars.ui8_throttle_virtual_step, "", 1, 100),
-    FIELD_EDITABLE_UINT("Odometer", &ui_vars.ui32_odometer_x10, "km", 0, UINT32_MAX, .div_digits = 1, .inc_step = 100, .onSetEditable = onSetConfigurationWheelOdometer),
-	FIELD_EDITABLE_ENUM("A service", &ui_vars.ui8_service_a_distance_enable, "disable", "enable"),
-	FIELD_EDITABLE_UINT("A service distance", &ui_vars.ui32_service_a_distance, "km", 0, 10000, .div_digits = 0, .inc_step = 10, .onSetEditable = onSetConfigurationServiceDistance),
-	FIELD_EDITABLE_ENUM("B service", &ui_vars.ui8_service_b_hours_enable, "disable", "enable"),
-	FIELD_EDITABLE_UINT("B service hours", &ui_vars.ui32_service_b_hours, "hrs", 0, 10000, .div_digits = 0, .inc_step = 10, .onSetEditable = onSetConfigurationServiceHours),
+    FIELD_EDITABLE_UINT("Odometer", &ui_vars.ui32_odometer_x10, "km", 0, UINT32_MAX, .div_digits = 1, .inc_step = 10, .onSetEditable = onSetConfigurationWheelOdometer),
+	FIELD_EDITABLE_ENUM("A service", &ui_vars.ui8_service_a_distance_enable, "disabled", "chain", "brakes", "shocks", "other"),
+	FIELD_EDITABLE_UINT("A service distance", &ui_vars.ui16_service_a_distance, "km", 0, 10000, .div_digits = 0, .inc_step = 10, .onSetEditable = onSetConfigurationServiceDistanceA),
+	FIELD_EDITABLE_ENUM("B service", &ui_vars.ui8_service_b_distance_enable, "disabled", "chain", "brakes", "shocks", "other"),
+	FIELD_EDITABLE_UINT("B service distance", &ui_vars.ui16_service_b_distance, "km", 0, 10000, .div_digits = 0, .inc_step = 10, .onSetEditable = onSetConfigurationServiceDistanceB),
 #else
 	FIELD_EDITABLE_UINT("Light conf", &ui_vars.ui8_lights_configuration, "", 0, 8),
     FIELD_EDITABLE_UINT("V thr step", &ui_vars.ui8_throttle_virtual_step, "", 1, 100),
     FIELD_EDITABLE_UINT("Odometer", &ui_vars.ui32_odometer_x10, "km", 0, UINT32_MAX, .div_digits = 1, .inc_step = 100, .onSetEditable = onSetConfigurationWheelOdometer),
 #endif
-	FIELD_READONLY_UINT(_S("OSF motor     v20.1C", "Mot v20.1C"), &g_tsdz2_firmware_version.patch, "", false, .div_digits = 1),
 	FIELD_END };
 
 #ifndef SW102
@@ -363,14 +382,14 @@ static Field varSpeedMenus[] =
 	FIELD_EDITABLE_UINT("Min threshold", &g_vars[VarsWheelSpeed].config_warn_threshold, "km", 0, 2000, .div_digits = 1, .inc_step = 10),
 	FIELD_END };
 
-static Field varTripDistanceMenus[] =
+static Field varMotorEfficiencyMenus[] =
 {
-	FIELD_EDITABLE_ENUM("Graph auto max min", &g_graphVars[VarsTripDistance].auto_max_min, "yes", "no"),
-	FIELD_EDITABLE_UINT("Graph max", &g_graphVars[VarsTripDistance].max, "km", 0, INT32_MAX, .div_digits = 1, .inc_step = 10),
-	FIELD_EDITABLE_UINT("Graph min", &g_graphVars[VarsTripDistance].min, "km", 0, INT32_MAX, .div_digits = 1, .inc_step = 10),
-	FIELD_EDITABLE_ENUM("Thresholds", &g_vars[VarsTripDistance].auto_thresholds, "disabled", "manual", "auto"),
-	FIELD_EDITABLE_UINT("Max threshold", &g_vars[VarsTripDistance].config_error_threshold, "km", 0, 2000, .div_digits = 1, .inc_step = 10),
-	FIELD_EDITABLE_UINT("Min threshold", &g_vars[VarsTripDistance].config_warn_threshold, "km", 0, 2000, .div_digits = 1, .inc_step = 10),
+	FIELD_EDITABLE_ENUM("Graph auto max min", &g_graphVars[VarsMotorEfficiency].auto_max_min,  "auto", "man", "semi"),
+	FIELD_EDITABLE_UINT("Graph max", &g_graphVars[VarsMotorEfficiency].max, "", 0, 100, .inc_step = 1),
+	FIELD_EDITABLE_UINT("Graph min", &g_graphVars[VarsMotorEfficiency].min, "", 0, 100, .inc_step = 1),
+	FIELD_EDITABLE_ENUM("Thresholds", &ui_vars.ui8_motor_efficiency_auto_thresholds, "disabled", "manual", "auto"),
+	FIELD_EDITABLE_UINT("Max threshold", &ui_vars.ui8_motor_efficiency_error_threshold, "", 0, 100, .inc_step = 1),
+	FIELD_EDITABLE_UINT("Min threshold", &ui_vars.ui8_motor_efficiency_warn_threshold, "", 0, 100, .inc_step = 1),
 	FIELD_END };
 
 static Field varCadenceMenus[] =
@@ -408,7 +427,7 @@ static Field varBatteryPowerUsageMenus[] =
     FIELD_EDITABLE_ENUM("Graph auto max min", &g_graphVars[VarsBatteryPowerUsage].auto_max_min, "auto", "man"),
     FIELD_EDITABLE_UINT("Graph max", &g_graphVars[VarsBatteryPowerUsage].max, "Wh/km", 0, 5000, .inc_step = 10),
     FIELD_EDITABLE_UINT("Graph min", &g_graphVars[VarsBatteryPowerUsage].min, "Wh/km", 0, 5000, .inc_step = 10),
-    FIELD_EDITABLE_ENUM("Thresholds", &g_vars[VarsBatteryPowerUsage].auto_thresholds, "disabled", "manual"),
+    FIELD_EDITABLE_ENUM("Thresholds", &g_vars[VarsBatteryPowerUsage].auto_thresholds, "disabled", "manual", "auto"),
     FIELD_EDITABLE_UINT("Max threshold", &g_vars[VarsBatteryPowerUsage].config_error_threshold, "", 0, 2000, .div_digits = 0, .inc_step = 10),
     FIELD_EDITABLE_UINT("Min threshold", &g_vars[VarsBatteryPowerUsage].config_warn_threshold, "", 0, 2000, .div_digits = 0, .inc_step = 10),
 	FIELD_END };
@@ -496,7 +515,7 @@ static Field varMotorFOCMenus[] =
 static Field variablesMenus[] =
 {
 	FIELD_SCROLLABLE("Speed", varSpeedMenus),
-	FIELD_SCROLLABLE("Trip distance", varTripDistanceMenus),
+	FIELD_SCROLLABLE("Efficiency", varMotorEfficiencyMenus),
 	FIELD_SCROLLABLE("Cadence", varCadenceMenus),
 	FIELD_SCROLLABLE("human power", varHumanPowerMenus),
 	FIELD_SCROLLABLE("motor power", varBatteryPowerMenus),

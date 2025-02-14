@@ -191,7 +191,8 @@ typedef enum {
 
 typedef enum {
   VarsWheelSpeed = 0,
-  VarsTripDistance,
+  //VarsTripDistance,
+  VarsMotorEfficiency,
   VarsOdometer,
   VarsCadence,
   VarsHumanPower,

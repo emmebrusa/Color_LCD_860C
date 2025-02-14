@@ -12,6 +12,7 @@
 #include "lcd.h"
 #include "state.h"
 #include "screen.h"
+#include "mainscreen.h"
 
 // For compatible changes, just add new fields at the end of the table (they will be inited to 0xff for old eeprom images).
 // For incompatible changes bump up EEPROM_MIN_COMPAT_VERSION and the user's EEPROM settings will be discarded.
@@ -20,7 +21,8 @@
 #define EEPROM_0x42_VERSION 0x42
 #define EEPROM_0x43_VERSION 0x43
 #define EEPROM_0x44_VERSION 0x44
-#define EEPROM_VERSION 0x50
+#define EEPROM_0x50_VERSION 0x50
+#define EEPROM_VERSION 0x51
 
 typedef struct {
   graph_auto_max_min_t auto_max_min;
@@ -70,7 +72,8 @@ typedef struct eeprom_data {
 
 #ifndef SW102
   Graph_eeprom graph_eeprom[VARS_SIZE];
-  uint8_t tripDistanceField_x_axis_scale_config;
+  //uint8_t tripDistanceField_x_axis_scale_config;
+  uint8_t motorEfficiencyField_x_axis_scale_config;
   field_threshold_t wheelSpeedField_auto_thresholds;
   int32_t wheelSpeedField_config_error_threshold;
   int32_t wheelSpeedField_config_warn_threshold;
@@ -145,7 +148,7 @@ typedef struct eeprom_data {
   uint16_t ui16_trip_a_auto_reset_hours;
   uint32_t ui32_trip_a_last_update_time;
 #endif
-  uint32_t ui32_trip_a_distance_x1000;
+  uint32_t ui32_trip_a_distance_x10;
   uint32_t ui32_trip_a_time;
   uint16_t ui16_trip_a_max_speed_x10;
 
@@ -154,7 +157,8 @@ typedef struct eeprom_data {
   uint16_t ui16_trip_b_auto_reset_hours;
   uint32_t ui32_trip_b_last_update_time;
 #endif
-  uint32_t ui32_trip_b_distance_x1000;
+  //uint32_t ui32_trip_b_distance_x1000;
+  uint32_t ui32_trip_b_distance_x10;
   uint32_t ui32_trip_b_time;
   uint16_t ui16_trip_b_max_speed_x10;
   
@@ -177,10 +181,10 @@ typedef struct eeprom_data {
 #ifndef SW102  
 	uint32_t ui32_wh_x10_total_offset;
  	uint16_t ui16_service_a_distance;
-	uint16_t ui16_service_b_hours;
-	uint16_t ui16_service_b_time;
+	uint16_t ui16_service_b_distance;
+	uint16_t ui16_service_b_time; // not used, do not delete
 	uint8_t ui8_service_a_distance_enable;
-	uint8_t ui8_service_b_hours_enable;
+	uint8_t ui8_service_b_distance_enable;
 #endif
 
 	uint8_t ui8_temperature_sensor_type;
@@ -204,6 +208,19 @@ typedef struct eeprom_data {
 #if defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
 	uint8_t ui8_light_sensor_hysteresis;
 #endif
+	uint8_t ui8_startup_assist_level;
+	uint8_t ui8_startup_ridimg_mode;
+	uint32_t ui32_last_errors;
+#ifndef SW102
+	uint32_t ui32_last_error_time[4];
+	uint32_t ui32_seconds_at_shutdown;
+	uint32_t ui32_RTC_total_seconds;
+  
+	uint8_t ui8_motor_efficiency_auto_thresholds;
+	uint8_t ui8_motor_efficiency_error_threshold;
+	uint8_t ui8_motor_efficiency_warn_threshold;
+#endif
+	uint8_t ui8_battery_overcurrent_delay;
 
 // FIXME align to 32 bit value by end of structure and pack other fields
 } eeprom_data_t;
@@ -221,18 +238,20 @@ void eeprom_init_defaults(void);
 #define eMTB_MODE													3
 
 // EEPROM memory variables default values
-#define DEFAULT_VALUE_RIDING_MODE	                                1
+#define DEFAULT_VALUE_RIDING_MODE									1
+#define DEFAULT_VALUE_STARTUP_RIDING_MODE	                        1
 #define DEFAULT_VALUE_ASSIST_LEVEL                                  0
 #define DEFAULT_VALUE_NUMBER_OF_ASSIST_LEVELS                       9
+#define DEFAULT_VALUE_STARTUP_ASSIST_LEVEL                       	0 // Last
 #define DEFAULT_VALUE_WHEEL_PERIMETER                               2100 // 27.5'' wheel: 2100mm perimeter
 #define DEFAULT_VALUE_WHEEL_MAX_SPEED                               25 // 25 km/h
 #define DEFAULT_VALUE_UNITS_TYPE                                    0 // // 0=km/h, 1=miles
 #ifndef SW102
 #define DEFAULT_VALUE_SERVICE_A_DISTANCE							0
-#define DEFAULT_VALUE_SERVICE_B_HOURS								0
-#define DEFAULT_VALUE_SERVICE_B_TIME								0
+#define DEFAULT_VALUE_SERVICE_B_DISTANCE							0
+//#define DEFAULT_VALUE_SERVICE_B_TIME								0
 #define DEFAULT_VALUE_SERVICE_A_DISTANCE_ENABLE						0
-#define DEFAULT_VALUE_SERVICE_B_HOURS_ENABLE						0
+#define DEFAULT_VALUE_SERVICE_B_DISTANCE_ENABLE						0
 #define DEFAULT_VALUE_WH_X10_TRIP_A_OFFSET							0
 #define DEFAULT_VALUE_WH_X10_TRIP_B_OFFSET							0
 #endif
@@ -244,16 +263,21 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_BATTERY_MAX_CURRENT                           16 // 16 amps
 #define DEFAULT_VALUE_MOTOR_MAX_CURRENT                             16 // 16 amps NOT USED
 #define DEFAULT_VALUE_CURRENT_MIN_ADC                               0 // 1 unit, 0.156 A
+#define DEFAULT_VALUE_BATTERY_OVERCURRENT_DELAY                     2 // * 25ms
 #define DEFAULT_VALUE_MOTOR_POWER_LIMIT                             20 // 20 * 25 = 500
 #define DEFAULT_VALUE_TARGET_MAX_BATTERY_POWER                      20 // 20 * 25 = 500, 0 is disabled
 #define DEFAULT_VALUE_BATTERY_LOW_VOLTAGE_CUT_OFF_X10               420 // 52v battery, LVC = 42.0 (3.0 * 14)
 #define DEFAULT_VALUE_BATTERY_VOLTAGE_CALIBRATE_PERCENT_X10			1000 // displayed voltage 
-#define DEFAULT_VALUE_BATTERY_SOC_PERCENT_CALCULATION				1  // 0=Auto 1=Wh 2=Volts
+#define DEFAULT_VALUE_BATTERY_SOC_PERCENT_CALCULATION				0  // 0=Auto 1=Wh 2=Volts
 #define DEFAULT_VALUE_BATTERY_SOC_RESET								15 // % + or -
 #define DEFAULT_VALUE_BATTERY_PACK_RESISTANCE                       240 // 52v battery, 14S3P measured 300 milli ohms
 #define DEFAULT_VALUE_MOTOR_TYPE                                    0 // 0 = 48V
 #define DEFAULT_VALUE_MOTOR_ASSISTANCE_WITHOUT_PEDAL_ROTATION       0 // 0 to keep this feature disable
 #define DEFAULT_VALUE_ASSIST_WITH_ERROR								0
+#define DEFAULT_VALUE_LAST_ERRORS									0
+#define DEFAULT_VALUE_LAST_ERRORS_TIME								0
+#define DEFAULT_VALUE_SECONDS_AT_SHUTDOWN							0
+#define DEFAULT_VALUE_RTC_TOTAL_SECONDS								0
 
 // default value for power assist
 #define DEFAULT_VALUE_POWER_ASSIST_LEVEL_1                          25  // MAX 254
@@ -336,11 +360,11 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_LCD_POWER_OFF_TIME                            30 // 30 minutes, each unit 1 minute
 
 #ifdef SW102
-#define DEFAULT_VALUE_LCD_BACKLIGHT_ON_BRIGHTNESS                   100 // 8 = 40%
-#define DEFAULT_VALUE_LCD_BACKLIGHT_OFF_BRIGHTNESS                  20 // 20 = 100%
+#define DEFAULT_VALUE_LCD_BACKLIGHT_ON_BRIGHTNESS                   80 //
+#define DEFAULT_VALUE_LCD_BACKLIGHT_OFF_BRIGHTNESS                  20 //
 #else
-#define DEFAULT_VALUE_LCD_BACKLIGHT_ON_BRIGHTNESS                   20 // 100 = 100%
-#define DEFAULT_VALUE_LCD_BACKLIGHT_OFF_BRIGHTNESS                  100
+#define DEFAULT_VALUE_LCD_BACKLIGHT_ON_BRIGHTNESS                   20 //
+#define DEFAULT_VALUE_LCD_BACKLIGHT_OFF_BRIGHTNESS                  80
 #endif
 
 #define DEFAULT_VALUE_LIGHT_SENSOR_ENABLED							0 // disabled
@@ -365,11 +389,7 @@ void eeprom_init_defaults(void);
 #define DEFAULT_VALUE_FIELD_WEAKENING_FEATURE_ENABLED               1 // 1 enabled
 #define DEFAULT_THROTTLE_VIRTUAL_STEP                               5
 #define DEFAULT_TORQUE_SENSOR_ADC_THRESHOLD                         20
-#ifndef SW102
 #define DEFAULT_COAST_BRAKE_ENABLE                                  0 // disable
-#else
-#define DEFAULT_COAST_BRAKE_ENABLE                                  1 // enable
-#endif
 #define DEFAULT_VALUE_MOTOR_ACCELERATION_ADJUSTMENT					5
 #define DEFAULT_VALUE_MOTOR_DECELERATION_ADJUSTMENT					5
 #define DEFAULT_VALUE_PEDAL_TORQUE_ADC_STEP_x100					67
@@ -389,13 +409,18 @@ void eeprom_init_defaults(void);
 #ifndef SW102
 #define DEFAULT_VALUE_TRIP_AUTO_RESET_ENABLE                         0 // disable
 #define DEFAULT_VALUE_TRIP_LAST_UPDATE                               0 // disable USED ?
-#define DEFAULT_VALUE_TRIP_A_AUTO_RESET_HOURS                        24 // 1 day 
-#define DEFAULT_VALUE_TRIP_B_AUTO_RESET_HOURS                        168 // 1 week = 7 * 24 = 168 hours
+#define DEFAULT_VALUE_TRIP_A_AUTO_RESET_HOURS                        12 // hours after shutdown
+#define DEFAULT_VALUE_TRIP_B_AUTO_RESET_HOURS                        0 // Set to zero, tripreset at fully charged battery
 #endif
 #define DEFAULT_VALUE_TRIP_DISTANCE                                  0
 #define DEFAULT_VALUE_TRIP_TIME                                      0
 #define DEFAULT_VALUE_TRIP_MAX_SPEED                                 0
 
+#ifndef SW102
+#define DEFAULT_VALUE_MOTOR_EFFICIENCY_AUTO_TRESHOLDS				2 // 0=DISABLED 1=MANUAL 2=AUTO
+#define DEFAULT_VALUE_MOTOR_EFFICIENCY_ERROR_TRESHOLD				58 // %
+#define DEFAULT_VALUE_MOTOR_EFFICIENCY_WARN_TRESHOLD				68 // %
+#endif
 
 #define DEFAULT_BIT_DATA_1 (DEFAULT_VALUE_UNITS_TYPE | \
 (DEFAULT_VALUE_MOTOR_TYPE << 1) | \
