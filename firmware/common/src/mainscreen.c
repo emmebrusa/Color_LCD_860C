@@ -1173,8 +1173,8 @@ static const char *motorErrors[] = { "0", "Mot no ini", "Torq Fault", "CadenFaul
 
 void warnings(void) {
   //uint32_t motor_temp_limit = ui_vars.ui8_temperature_limit_feature_enabled & 1;
-  uint8_t ui8_motorErrorsIndex;
-  uint8_t ui8_assist_whit_error_flag;
+  uint8_t ui8_motorErrorsIndex = 0;
+  uint8_t ui8_assist_whit_error_flag = 0;
 
   switch (g_motor_init_state) {
     case MOTOR_INIT_ERROR_SET_CONFIGURATIONS:
