@@ -16,6 +16,7 @@
 #define CONFIGURATION_RESET 0x0000
 
 uint32_t ui32_seconds_since_startup = 0;
+uint32_t ui32_seconds_at_startup = 0;
 
 void RTC_IRQHandler(void)
 {
@@ -108,6 +109,9 @@ void rtc_init()
     RTC_WaitForLastTask();
   }
 
+  // read RTC at power on before RTC set
+  ui32_seconds_at_startup = RTC_GetCounter();
+	
   // reset counter if more than 1 day passed in power down/Low Power Mode
   if((RTC_GetCounter() / SECONDS_IN_DAY) != 0)
   {
