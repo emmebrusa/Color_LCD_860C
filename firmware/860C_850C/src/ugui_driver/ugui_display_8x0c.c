@@ -419,7 +419,105 @@ lcd_IC_t display_8x0C_lcd_init(void) {
         while (1);
         break;
     }
-#elif DISPLAY_860C
+#elif DISPLAY_850C_2021
+	type = LCD_ST7796;
+
+    delay_ms(120);
+    lcd_write_command(0x11);
+    delay_ms(120);
+
+    lcd_write_command(0x36);
+    lcd_write_data_8bits(0x48);
+
+    lcd_write_command(0x3A);
+    lcd_write_data_8bits(0x55);
+
+    lcd_write_command(0xF0);
+    lcd_write_data_8bits(0xC3);
+
+    lcd_write_command(0xF0);
+    lcd_write_data_8bits(0x96);
+
+    lcd_write_command(0xB4);
+    lcd_write_data_8bits(0x01);
+
+    lcd_write_command(0xB7);
+    lcd_write_data_8bits(0xC6);
+
+    lcd_write_command(0xC0);
+    lcd_write_data_8bits(0xF0);
+    lcd_write_data_8bits(0x35);
+
+    lcd_write_command(0xC1);
+    lcd_write_data_8bits(0x15);
+
+    lcd_write_command(0xC2);
+    lcd_write_data_8bits(0xAF);
+
+    lcd_write_command(0xC3);
+    lcd_write_data_8bits(0x09);
+
+    lcd_write_command(0xC5);     //VCOM
+    lcd_write_data_8bits(0x06);
+
+    lcd_write_command(0xC6);
+    lcd_write_data_8bits(0x00);
+
+    lcd_write_command(0xE8);
+    lcd_write_data_8bits(0x40);
+    lcd_write_data_8bits(0x8A);
+    lcd_write_data_8bits(0x00);
+    lcd_write_data_8bits(0x00);
+    lcd_write_data_8bits(0x29);
+    lcd_write_data_8bits(0x19);
+    lcd_write_data_8bits(0xA5);
+    lcd_write_data_8bits(0x33);
+
+    lcd_write_command(0xE0);
+    lcd_write_data_8bits(0x70);
+    lcd_write_data_8bits(0x00);
+    lcd_write_data_8bits(0x05);
+    lcd_write_data_8bits(0x03);
+    lcd_write_data_8bits(0x02);
+    lcd_write_data_8bits(0x20);
+    lcd_write_data_8bits(0x29);
+    lcd_write_data_8bits(0x01);
+    lcd_write_data_8bits(0x45);
+    lcd_write_data_8bits(0x30);
+    lcd_write_data_8bits(0x09);
+    lcd_write_data_8bits(0x07);
+    lcd_write_data_8bits(0x22);
+    lcd_write_data_8bits(0x29);
+
+    lcd_write_command(0xE1);
+    lcd_write_data_8bits(0x70);
+    lcd_write_data_8bits(0x0C);
+    lcd_write_data_8bits(0x10);
+    lcd_write_data_8bits(0x0F);
+    lcd_write_data_8bits(0x0E);
+    lcd_write_data_8bits(0x09);
+    lcd_write_data_8bits(0x35);
+    lcd_write_data_8bits(0x64);
+    lcd_write_data_8bits(0x48);
+    lcd_write_data_8bits(0x3A);
+    lcd_write_data_8bits(0x14);
+    lcd_write_data_8bits(0x13);
+    lcd_write_data_8bits(0x2E);
+    lcd_write_data_8bits(0x30);
+
+    //lcd_write_command(0x21);
+
+    lcd_write_command(0xF0);
+    lcd_write_data_8bits(0xC3);
+
+    lcd_write_command(0xF0);
+    lcd_write_data_8bits(0x96);
+
+    delay_ms(120);
+
+    lcd_write_command(0x29);
+
+#elif defined(DISPLAY_860C) || defined(DISPLAY_860C_V12) || defined(DISPLAY_860C_V13)
     type = LCD_ST7796;
 
     delay_ms(120);
