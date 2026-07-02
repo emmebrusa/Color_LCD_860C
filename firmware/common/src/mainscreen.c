@@ -1473,7 +1473,7 @@ void battery_soc(void) {
 		break;
 
 		case 2:
-			fieldPrintf(&socField, "%u.%1uV%",
+			fieldPrintf(&socField, "%u.%1uV",
 				ui_vars.ui16_battery_voltage_soc_x10 / 10,
 				ui_vars.ui16_battery_voltage_soc_x10 % 10);
 		break;
